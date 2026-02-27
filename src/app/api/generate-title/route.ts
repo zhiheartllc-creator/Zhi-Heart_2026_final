@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateChatTitle } from '@/ai/flows/generate-chat-title-flow';
 
-const isStaticExport = process.env.NEXT_OUTPUT === 'export';
-export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
+
 
 export async function POST(req: Request) {
   try {

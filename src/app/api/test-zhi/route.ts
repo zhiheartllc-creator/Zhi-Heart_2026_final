@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const isStaticExport = process.env.NEXT_OUTPUT === 'export';
-export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
+
 
 
 export async function GET() {
