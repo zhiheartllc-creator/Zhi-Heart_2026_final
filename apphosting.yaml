@@ -1,0 +1,16 @@
+# Firebase App Hosting - Zhi Heart
+# SSR deployment for Next.js with API Routes (Gemini AI chat)
+
+runConfig:
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME

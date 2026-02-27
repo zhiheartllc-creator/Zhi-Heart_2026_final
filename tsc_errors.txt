@@ -1,0 +1,14 @@
+﻿next.config.ts(20,3): error TS2353: Object literal may only specify known properties, and 'serverActions' does not exist in type 'NextConfig'.
+src/ai/flows/generate-chat-title-flow.ts(10,15): error TS2305: Module '"@/lib/types"' has no exported member 'GenerateChatTitleInput'.
+src/ai/flows/generate-chat-title-flow.ts(10,39): error TS2305: Module '"@/lib/types"' has no exported member 'GenerateChatTitleOutput'.
+src/ai/flows/generate-chat-title-flow.ts(11,10): error TS2305: Module '"@/lib/types"' has no exported member 'GenerateChatTitleInputSchema'.
+src/ai/flows/generate-chat-title-flow.ts(11,40): error TS2305: Module '"@/lib/types"' has no exported member 'GenerateChatTitleOutputSchema'.
+src/ai/flows/generate-chat-title-flow.ts(18,32): error TS2339: Property 'definePrompt' does not exist on type '{}'.
+src/ai/flows/generate-chat-title-flow.ts(37,34): error TS2339: Property 'defineFlow' does not exist on type '{}'.
+src/ai/flows/generate-chat-title-flow.ts(43,10): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/ai/flows/zhi-chat-flow.ts(11,17): error TS2307: Cannot find module 'genkit' or its corresponding type declarations.
+src/ai/flows/zhi-chat-flow.ts(38,26): error TS2339: Property 'definePrompt' does not exist on type '{}'.
+src/ai/flows/zhi-chat-flow.ts(190,24): error TS2339: Property 'defineFlow' does not exist on type '{}'.
+src/ai/flows/zhi-chat-flow.ts(196,9): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/hooks/use-toast.ts(4,53): error TS2306: File 'C:/APP_yo/Zhi/Zhi-Heart 2026 final/src/components/ui/toast.tsx' is not a module.
+src/hooks/use-toast.ts(105,87): error TS7006: Parameter 'open' implicitly has an 'any' type.

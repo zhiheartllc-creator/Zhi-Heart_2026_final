@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zhi-Heart</string>
+    <string name="title_activity_main">Zhi-Heart</string>
+    <string name="package_name">io.zhi.heart</string>
+    <string name="custom_url_scheme">io.zhi.heart</string>
+    <string name="server_client_id">535312456048-3p0o2d6boen6g01qcool6g7l0t761pmr.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,18 @@
+﻿2026-02-13T09:00:01.335956Z I recordatorioanimo: 
+2026-02-13T09:00:01.389397Z I recordatorioanimo: Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+2026-02-13T09:00:04.117560Z I recordatorioanimo: Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.
+2026-02-13T09:00:05.303339Z ? recordatorioanimo: Recordatorios enviados.
+
+2026-02-14T09:00:01.263683Z I recordatorioanimo: 
+2026-02-14T09:00:01.361544Z I recordatorioanimo: Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+2026-02-14T09:00:04.326798Z I recordatorioanimo: Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.
+2026-02-14T09:00:05.538633Z ? recordatorioanimo: Recordatorios enviados.
+
+2026-02-15T09:00:01.316619Z I recordatorioanimo: 
+2026-02-15T09:00:01.372033Z I recordatorioanimo: Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+2026-02-15T09:00:04.534872Z I recordatorioanimo: Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.
+2026-02-15T09:00:05.892206Z ? recordatorioanimo: Recordatorios enviados.
+
+2026-02-16T09:00:01.238386Z I recordatorioanimo: 
+2026-02-16T09:00:01.291414Z I recordatorioanimo: Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+2026-02-16T09:00:04.205870Z I recordatorioanimo: Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.

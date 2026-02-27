@@ -1,0 +1,128 @@
+﻿   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ Ô£ô (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Linting ...
+   Collecting page data ...
+   Generating static pages (0/16) ...
+node.exe : Could not 
+find files for /_error 
+in .next/build-manifest
+.json
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Could not fin   
+ d ...d-manifest.js    
+on:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+Could not find files 
+for /_error in .next/bu
+ild-manifest.json
+Could not find files 
+for /_error in .next/bu
+ild-manifest.json
+Could not find files 
+for /_error in .next/bu
+ild-manifest.json
+TypeError: Cannot read 
+properties of 
+undefined (reading 
+'call')
+    at Object.t [as 
+require] (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\.
+next\server\webpack-run
+time.js:1:143)
+    at JSON.parse 
+(<anonymous>)
+Error occurred 
+prerendering page 
+"/signup". Read more: h
+ttps://nextjs.org/docs/
+messages/prerender-erro
+r
+TypeError: Cannot read 
+properties of 
+undefined (reading 
+'call')
+    at Object.t [as 
+require] (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\.
+next\server\webpack-run
+time.js:1:143)
+    at require (C:\APP_
+yo\Zhi\Zhi-Heart_2026_f
+inal\node_modules\next\
+dist\compiled\next-serv
+er\app-page.runtime.pro
+d.js:131:7946)
+    at c (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\n
+ode_modules\next\dist\c
+ompiled\next-server\app
+-page.runtime.prod.js:3
+6:680)
+    at U (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\n
+ode_modules\next\dist\c
+ompiled\next-server\app
+-page.runtime.prod.js:3
+6:10533)
+    at V (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\n
+ode_modules\next\dist\c
+ompiled\next-server\app
+-page.runtime.prod.js:3
+6:13089)
+    at C:\APP_yo\Zhi\Zh
+i-Heart_2026_final\node
+_modules\next\dist\comp
+iled\next-server\app-pa
+ge.runtime.prod.js:36:1
+5340
+    at Array._fromJSON 
+(C:\APP_yo\Zhi\Zhi-Hear
+t_2026_final\node_modul
+es\next\dist\compiled\n
+ext-server\app-page.run
+time.prod.js:36:15374)
+    at JSON.parse 
+(<anonymous>)
+    at F (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\n
+ode_modules\next\dist\c
+ompiled\next-server\app
+-page.runtime.prod.js:3
+6:10257)
+    at N (C:\APP_yo\Zhi
+\Zhi-Heart_2026_final\n
+ode_modules\next\dist\c
+ompiled\next-server\app
+-page.runtime.prod.js:3
+6:9574)
+Export encountered an 
+error on /signup/page: 
+/signup, exiting the 
+build.
+   Generating static pages (4/16) 
+ Ô¿» Next.js build 
+worker exited with 
+code: 1 and signal: 
+null

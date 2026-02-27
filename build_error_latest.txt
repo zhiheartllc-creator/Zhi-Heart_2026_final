@@ -1,0 +1,36 @@
+﻿
+> zhi-heart-2026@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ Ôùï (serwist) Serwist is disabled.
+ Ôùï (serwist) Serwist is disabled.
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Linting ...
+   Collecting page data ...
+node.exe : 
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (:String) [],    
+ RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+> Server Actions are 
+not supported with 
+static export.

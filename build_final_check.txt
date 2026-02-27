@@ -1,0 +1,50 @@
+﻿
+> zhi-heart-2026@0.1.0 build:static
+> cross-env NEXT_OUTPUT=export next build
+
+   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ Ôùï (serwist) Serwist is disabled.
+ Ôùï (serwist) Serwist is disabled.
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Linting ...
+   Collecting page data ...
+   Generating static pages (0/18) ...
+   Generating static pages (4/18) 
+   Generating static pages (8/18) 
+   Generating static pages (13/18) 
+ Ô£ô Generating static pages (18/18)
+   Finalizing page optimization ...
+   Collecting build traces ...
+   Exporting (0/3) ...
+ Ô£ô Exporting (3/3)
+
+Route (app)                              Size     First Load JS
+Ôöî Ôùï /                                    7.83 kB         402 kB
+Ôö£ Ôùï /_not-found                          990 B           107 kB
+Ôö£ ãÆ /api/chat                            163 B           106 kB
+Ôö£ ãÆ /api/extract-insights                163 B           106 kB
+Ôö£ ãÆ /api/generate-title                  163 B           106 kB
+Ôö£ Ôùï /api/test-zhi                        163 B           106 kB
+Ôö£ Ôùï /chat                                13.4 kB         300 kB
+Ôö£ Ôùï /contact                             5.37 kB         302 kB
+Ôö£ Ôùï /dashboard                           112 kB          532 kB
+Ôö£ Ôùï /data-privacy                        163 B           106 kB
+Ôö£ Ôùï /history                             10.7 kB         370 kB
+Ôö£ Ôùï /login                               6.43 kB         282 kB
+Ôö£ Ôùï /privacy-policy                      163 B           106 kB
+Ôö£ Ôùï /settings                            25.1 kB         392 kB
+Ôö£ Ôùï /signup                              10.8 kB         324 kB
+Ôöö Ôùï /terms-of-use                        163 B           106 kB
++ First Load JS shared by all            106 kB
+  Ôö£ chunks/1517-9bde9e9985c9ca51.js      50.9 kB
+  Ôö£ chunks/4bd1b696-96784d971f234c4c.js  53 kB
+  Ôöö other shared chunks (total)          2.17 kB
+
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+
