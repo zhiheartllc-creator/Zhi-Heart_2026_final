@@ -10,6 +10,18 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // CAPGO UPDATE LOGIC
+    const initUpdater = async () => {
+      try {
+        const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+        await CapacitorUpdater.notifyAppReady();
+        console.log('[CAPGO] App ready for updates');
+      } catch (e) {
+        console.log('[CAPGO] Not running in a native Capgo environment (or error):', e);
+      }
+    };
+    initUpdater();
+
     if (process.env.NODE_ENV === 'development') {
       if (navigator.serviceWorker) {
         navigator.serviceWorker.getRegistrations().then((regs) => {

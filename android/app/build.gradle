@@ -10,8 +10,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
 
         // --- CAMBIOS REALIZADOS AQUÍ ---
-        versionCode 24
-        versionName "1.2.4"
+        versionCode 26
+        versionName "1.2.6"
         // -------------------------------
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
