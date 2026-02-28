@@ -45,12 +45,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
     }
   }
 
-  // Web fallback
-  if (typeof window === 'undefined' || !('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  const result = await Notification.requestPermission();
-  return result === 'granted';
+  // Web fallback no soportado: los recordatorios son premium de la app nativa
+  return false;
 }
 
 /**
@@ -66,7 +62,7 @@ export async function hasNotificationPermission(): Promise<boolean> {
       return false;
     }
   }
-  return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  return false;
 }
 
 /**
@@ -82,8 +78,6 @@ export async function cancelMoodReminders(): Promise<void> {
       console.error('[NOTIF] Error cancelling notifications:', e);
     }
   }
-  // En web no hay forma de cancelar las Web Notifications ya mostradas,
-  // pero el flag en localStorage evitará que se muestren de nuevo.
   localStorage.removeItem('zhi_notifications_enabled');
 }
 
@@ -164,36 +158,6 @@ export async function scheduleMoodReminders(): Promise<boolean> {
       return false;
     }
   }
-
-  // ── Web fallback (funciona mientras la app está abierta / con SW) ──
-  localStorage.setItem('zhi_notifications_enabled', 'true');
-  // En web programamos con setTimeout para la próxima vez que aplique en esta sesión
-  scheduleWebFallback();
-  return true;
-}
-
-/** Fallback para web: programa una notificación usando setTimeout basado en la hora actual */
-function scheduleWebFallback() {
-  const now = new Date();
-  const times = [
-    { hour: 8, title: '🌅 Buenos días, ¿cómo amaneciste?', body: 'Registra cómo te sientes este momento.' },
-    { hour: 19, title: '🌙 Pausa emocional de la tarde', body: '¿Cómo terminó tu día? Regístralo con Zhi.' },
-  ];
-
-  for (const t of times) {
-    const target = new Date();
-    target.setHours(t.hour, 0, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-    const ms = target.getTime() - now.getTime();
-
-    setTimeout(() => {
-      if (localStorage.getItem('zhi_notifications_enabled') !== 'true') return;
-      if (Notification.permission !== 'granted') return;
-      try {
-        new Notification(t.title, { body: t.body, icon: '/icon_zhi.png', tag: `zhi-mood-${t.hour}` });
-      } catch (e) {
-        console.log('[NOTIF] Web notification failed:', e);
-      }
-    }, ms);
-  }
+  // ── Web fallback eliminado (Premium Native Feature) ──
+  return false;
 }
