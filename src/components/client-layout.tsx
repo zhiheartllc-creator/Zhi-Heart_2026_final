@@ -2,6 +2,7 @@
 
 import { AuthProvider } from "@/hooks/use-auth";
 import React from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || Date.now().toString();
 
@@ -53,6 +54,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       {children}
+      <Toaster />
     </AuthProvider>
   );
 }

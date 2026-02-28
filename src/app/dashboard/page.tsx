@@ -500,7 +500,17 @@ export default function DashboardPage() {
         await addDoc(collection(db, 'users', user.uid, 'moodEntries'), {
             uid: user.uid, mood: moodName, date: format(new Date(), 'yyyy-MM-dd'), createdAt: Timestamp.now()
         });
-        toast({ title: '¡Ánimo registrado!', description: `Te sientes ${moodName}.` });
+        toast({ 
+            title: '¡Ánimo registrado!', 
+            description: (
+              <div className="flex items-center gap-3 mt-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/60 shadow-sm">
+                <Image src={moodImages[moodName]} alt={moodName} width={40} height={40} className="rounded-full shadow-sm object-cover" />
+                <span className="text-slate-700 font-medium text-[13px] leading-tight">
+                  Tu estado de ánimo ({moodName}) se guardó correctamente.
+                </span>
+              </div>
+            )
+        });
     } catch (e) {
         toast({ variant: "destructive", title: "Error", description: "No se pudo guardar." });
     }
