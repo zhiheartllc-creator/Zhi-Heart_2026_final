@@ -51,7 +51,7 @@ export function BottomNavBar({ forceShow }: { forceShow?: boolean } = {}) {
                       <span className="text-[10px] font-medium">{item.name}</span>
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="w-[90vw] max-w-md rounded-2xl gap-0 p-0 border-none shadow-xl">
+                  <DialogContent className="w-[90vw] max-w-md rounded-2xl gap-0 p-0 border-none shadow-xl" aria-describedby={undefined}>
                     <DialogHeader className="p-4 border-b border-slate-100 flex flex-row items-center justify-center relative">
                        <DialogTitle className="text-center text-lg font-bold text-slate-800">Menú</DialogTitle>
                     </DialogHeader>

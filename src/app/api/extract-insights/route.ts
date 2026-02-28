@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { extractInsights } from '@/ai/flows/extract-insights-flow';
 
 
+export const dynamic = 'force-static';
 
 export async function POST(req: Request) {
   try {

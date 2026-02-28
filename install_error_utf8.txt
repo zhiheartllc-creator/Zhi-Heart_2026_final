@@ -1,0 +1,46 @@
+﻿node.exe : npm error code ERESOLVE
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm error code ERESOLVE:String) [ 
+   ], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: @codetrix-studio/capacitor-google-auth@3.4.0-rc.4
+npm error Found: @capacitor/core@8.1.0
+npm error node_modules/@capacitor/core
+npm error   @capacitor/core@"^8.1.0" from the root project
+npm error   peer @capacitor/core@"^8.1.0" from @capacitor/android@8.1.0
+npm error   node_modules/@capacitor/android
+npm error     @capacitor/android@"^8.1.0" from the root project
+npm error   2 more (@capacitor/local-notifications, 
+@capacitor/push-notifications)
+npm error
+npm error Could not resolve dependency:
+npm error peer @capacitor/core@"^6.0.0" from 
+@codetrix-studio/capacitor-google-auth@3.4.0-rc.4
+npm error node_modules/@codetrix-studio/capacitor-google-auth
+npm error   @codetrix-studio/capacitor-google-auth@"^3.4.0-rc.4" from the root 
+project
+npm error
+npm error Conflicting peer dependency: @capacitor/core@6.2.1
+npm error node_modules/@capacitor/core
+npm error   peer @capacitor/core@"^6.0.0" from 
+@codetrix-studio/capacitor-google-auth@3.4.0-rc.4
+npm error   node_modules/@codetrix-studio/capacitor-google-auth
+npm error     @codetrix-studio/capacitor-google-auth@"^3.4.0-rc.4" from the 
+root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency 
+resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\rhurt\AppData\Local\npm-cache\_logs\2026-02-27T23_31_44_442Z
+-eresolve-report.txt
+npm error A complete log of this run can be found in: C:\Users\rhurt\AppData\Lo
+cal\npm-cache\_logs\2026-02-27T23_31_44_442Z-debug-0.log

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateChatTitle } from '@/ai/flows/generate-chat-title-flow';
 
 
+export const dynamic = 'force-static';
 
 export async function POST(req: Request) {
   try {

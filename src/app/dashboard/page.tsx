@@ -139,7 +139,7 @@ function MoodCalendar() {
           </CardContent>
         </div>
       </Card>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Registros de {selectedDay && format(selectedDay, 'd MMMM', { locale: es })}</DialogTitle>
         </DialogHeader>

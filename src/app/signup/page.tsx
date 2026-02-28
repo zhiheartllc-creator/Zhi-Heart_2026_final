@@ -428,7 +428,7 @@ export default function SignupWizard() {
               <div className="flex items-start space-x-3 pt-2">
                 <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(c) => setAcceptedTerms(!!c)} className="mt-1" />
                 <label htmlFor="terms" className="text-sm font-medium leading-tight text-slate-700">
-                  He leído y acepto la <a href="https://studio--studio-2141942949-c8e1e.us-central1.hosted.app/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Política de Privacidad</a> y los <a href="https://studio--studio-2141942949-c8e1e.us-central1.hosted.app/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Términos de Uso</a>.
+                  He leído y acepto la <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Política de Privacidad</a> y los <a href="/terms-of-use" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Términos de Uso</a>.
                 </label>
               </div>
 

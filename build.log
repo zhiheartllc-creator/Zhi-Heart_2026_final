@@ -1,0 +1,53 @@
+﻿
+> zhi-heart-2026@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+node.exe :  Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/chat/route":
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Ô¿» Next.js ca...pi/chat/route"::String 
+   ) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/extract-insights/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/test-zhi/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/generate-title/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô£ô (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/extract-insights/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/generate-title/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route "/api/chat/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Next.js can't recognize the exported `config` field in route 
+"/api/test-zhi/route":
+Unsupported node type "ConditionalExpression" at "dynamic".
+Read More - https://nextjs.org/docs/messages/invalid-page-config
+ Ô¿» Invalid config value exports detected, these can cause unexpected behavior from 
+the configs not being applied. Please fix them to continue
