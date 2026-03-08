@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 import { doc, getDoc, setDoc, collection, onSnapshot, getDocs, Timestamp, query, where, orderBy, addDoc, limit, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import type { UserProfile, MoodEntry, ChatHistoryEntry, Notification } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -268,12 +268,12 @@ function EmotionalAnalyticsCard() {
     <Card className="relative overflow-hidden border-none shadow-md">
       <Image src="/Corazon_Zhi.jpg" alt="bg" fill className="absolute inset-0 z-0 object-cover opacity-80" priority />
       <div className="absolute inset-0 bg-white/20 backdrop-blur-sm z-0" />
-      <div className="relative z-10 flex flex-col h-full min-h-[400px]">
+      <div className="relative z-10 flex flex-col h-full min-h-[340px]">
         <CardHeader className="pb-0 text-center">
           <CardTitle className="text-slate-900 text-xl font-bold">Resumen Semanal</CardTitle>
           <CardDescription className="text-slate-800 font-medium pt-1">Tu balance emocional de esta semana.</CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col items-center justify-center pt-6 pb-2">
+        <CardContent className="flex-1 flex flex-col items-center justify-center pt-4 pb-2">
           {weeklyChartData.length === 0 ? (
             <div className="text-center opacity-50 space-y-2 my-auto">
               <p className="text-sm">Aún no hay registros esta semana.</p>
@@ -281,33 +281,34 @@ function EmotionalAnalyticsCard() {
             </div>
           ) : (
             <>
-              <ChartContainer config={chartConfig} className="h-64 w-full mb-2">
+              <ChartContainer config={chartConfig} className="h-44 w-full mb-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 20, right: 0, bottom: 20, left: 0 }}>
+                  <PieChart margin={{ top: 5, right: 0, bottom: 5, left: 0 }}>
                     <RechartsTooltip content={<ChartTooltipContent nameKey="mood" hideLabel />} />
-                    <Pie data={weeklyChartData} dataKey="count" nameKey="mood" innerRadius={60} outerRadius={80} paddingAngle={2} />
+                    <Pie data={weeklyChartData} dataKey="count" nameKey="mood" innerRadius={40} outerRadius={58} paddingAngle={3} strokeWidth={2} />
                     <Legend 
                       verticalAlign="bottom" 
-                      height={36} 
+                      height={28} 
+                      iconSize={8}
                       iconType="circle" 
-                      formatter={(value) => <span className="text-slate-800 font-medium">{value}</span>}
+                      formatter={(value) => <span className="text-slate-800 text-xs font-medium">{value}</span>}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartContainer>
 
-              <div className="text-center space-y-1 w-full mt-4">
+              <div className="text-center space-y-0.5 w-full mt-2">
                 <p className="text-sm font-medium text-slate-800">Tendencia del ánimo</p>
                 <div className="flex items-center justify-center gap-2">
-                  <TendencyIcon className={cn("w-6 h-6 font-bold", tendencyColor)} />
-                  <span className={cn("text-2xl font-bold", tendencyColor)}>{tendency}</span>
+                  <TendencyIcon className={cn("w-5 h-5 font-bold", tendencyColor)} />
+                  <span className={cn("text-xl font-bold", tendencyColor)}>{tendency}</span>
                 </div>
                 <p className="text-xs text-slate-700">Comparado con la semana pasada.</p>
               </div>
             </>
           )}
         </CardContent>
-        <div className="w-full text-center p-4 pt-2 mt-auto min-h-[64px] flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-b-xl border-t border-white/20">
+        <div className="w-full text-center p-4 pt-2 mt-auto min-h-[56px] flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-b-xl border-t border-white/20">
             <p className="text-xs italic text-slate-800 font-medium leading-relaxed">"{dynamicQuote}"</p>
         </div>
       </div>
@@ -464,7 +465,7 @@ function DashboardCard({ icon: Icon, title, description, href, imageUrl }: { ico
 }
 
 export default function DashboardPage() {
-    const { user, loading } = useAuth();
+    const { user, loading, initializing, justSignedIn } = useAuth();
     const router = useRouter();
     // hasLoadedOnce: asegura que solo redirijamos a /login cuando el SDK de Auth
     // ha tenido al menos un ciclo completo para resolver el estado. Esto previene
@@ -474,14 +475,30 @@ export default function DashboardPage() {
     if (!loading) hasLoadedOnce.current = true;
 
     useEffect(() => {
-      // Solo redirigir si: el SDK ya terminó de cargar (loading===false),
+      // Solo redirigir si: Firebase terminó de inicializar (initializing===false),
+      // el SDK ya terminó de cargar (loading===false),
       // y además ya había cargado antes (hasLoadedOnce asegura un ciclo completo),
-      // y no hay ningún usuario autenticado.
-      if (hasLoadedOnce.current && loading === false && user === null) {
-        console.log('[DASHBOARD] Sin usuario detectado, redirigiendo a login...');
-        router.push('/login');
+      // y no hay ningún usuario autenticado,
+      // y NO hay un login reciente en progreso (justSignedIn).
+      if (!initializing && hasLoadedOnce.current && loading === false && user === null && !justSignedIn) {
+        // Verificar auth.currentUser como fallback antes de redirigir
+        if (auth.currentUser) {
+          console.log('[DASHBOARD] user=null en context pero auth.currentUser existe, esperando propagación...');
+          return;
+        }
+        // Delay de gracia de 3s para dar tiempo a onAuthStateChanged
+        const redirectTimer = setTimeout(() => {
+          // Verificar una vez más antes de redirigir
+          if (!auth.currentUser) {
+            console.log('[DASHBOARD] Sin usuario detectado después del delay, redirigiendo a login...');
+            router.push('/login');
+          } else {
+            console.log('[DASHBOARD] auth.currentUser detectado durante delay, cancelando redirect.');
+          }
+        }, 3000);
+        return () => clearTimeout(redirectTimer);
       }
-    }, [user, loading, router]);
+    }, [user, loading, initializing, justSignedIn, router]);
   const { toast } = useToast();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
@@ -502,6 +519,7 @@ export default function DashboardPage() {
         });
         toast({ 
             title: '¡Ánimo registrado!', 
+            duration: 3000,
             description: (
               <div className="flex items-center gap-3 mt-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/60 shadow-sm">
                 <Image src={moodImages[moodName]} alt={moodName} width={40} height={40} className="rounded-full shadow-sm object-cover" />
@@ -516,7 +534,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading || !user) return <LoadingAnimation />;
+  if (loading || initializing || !user) return <LoadingAnimation />;
 
   return (
     <div className="flex flex-col min-h-screen bg-white pb-10">

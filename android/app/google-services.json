@@ -44,6 +44,35 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:535312456048:android:4ff0f15e2e200e5fab57b5",
+        "android_client_info": {
+          "package_name": "com.zhiheart.lumivi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "535312456048-3p0o2d6boen6g01qcool6g7l0t761pmr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI3FObBxc1lBz187sqJqTLe4qiY1xisas"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "535312456048-3p0o2d6boen6g01qcool6g7l0t761pmr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:535312456048:android:7eb0f554f7585c6bab57b5",
         "android_client_info": {
           "package_name": "io.zhi.heart"
@@ -51,7 +80,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "535312456048-ojopeogb8v6g1e47hvrf1j4krvi91o4a.apps.googleusercontent.com",
+          "client_id": "535312456048-52hdh1ngvfpaafqu3hiou2mod3lc7bm6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.zhi.heart",
+            "certificate_hash": "3d54a9b3e91496b8371ab412f87a97342854237c"
+          }
+        },
+        {
+          "client_id": "535312456048-qc2qj7jjplrt3dsim0t5iavp40mubgge.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "io.zhi.heart",

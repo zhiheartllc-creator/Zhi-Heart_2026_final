@@ -7,6 +7,10 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: '#ffffff',
   },
+  server: {
+    // Permite que el WebView haga requests HTTP/fetch a estos dominios
+    allowNavigation: ['zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app'],
+  },
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],

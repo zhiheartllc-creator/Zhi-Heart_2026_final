@@ -45,7 +45,13 @@ export async function requestNotificationPermission(): Promise<boolean> {
     }
   }
 
-  // Web fallback no soportado: los recordatorios son premium de la app nativa
+  // Web/PWA fallback: usar Notification API del navegador
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (Notification.permission === 'granted') return true;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+
   return false;
 }
 
@@ -61,6 +67,10 @@ export async function hasNotificationPermission(): Promise<boolean> {
     } catch {
       return false;
     }
+  }
+  // Web/PWA fallback
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    return Notification.permission === 'granted';
   }
   return false;
 }
@@ -83,10 +93,13 @@ export async function cancelMoodReminders(): Promise<void> {
 
 /**
  * Programa recordatorios diarios:
- * - Mañana: 8:00 AM
- * - Tarde-noche: 7:00 PM
+ * - Mañana: 7:00 AM (hora local del dispositivo)
+ * - Tarde: 5:00 PM (hora local del dispositivo)
  *
- * Estos se repiten automáticamente cada día usando el schedule nativo.
+ * IMPORTANTE: Usamos `at` con un Date concreto en vez de `on: { hour, minute }`
+ * porque `on` se interpreta como UTC en algunos dispositivos Android,
+ * causando que las notificaciones lleguen a las 3 AM en vez de la hora local.
+ * `at` siempre usa la zona horaria local del dispositivo.
  */
 export async function scheduleMoodReminders(): Promise<boolean> {
   const granted = await requestNotificationPermission();
@@ -99,19 +112,21 @@ export async function scheduleMoodReminders(): Promise<boolean> {
       // Cancelamos los anteriores primero para evitar duplicados
       await LN.cancel({ notifications: [{ id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }] });
 
-      // Calculamos la próxima 8:00 AM
+      // Calculamos la próxima 7:00 AM hora LOCAL del dispositivo
       const nextMorning = new Date();
-      nextMorning.setHours(8, 0, 0, 0);
+      nextMorning.setHours(7, 0, 0, 0);
       if (nextMorning <= new Date()) {
         nextMorning.setDate(nextMorning.getDate() + 1); // Si ya pasó, mañana
       }
 
-      // Calculamos la próxima 7:00 PM
+      // Calculamos la próxima 5:00 PM hora LOCAL del dispositivo
       const nextEvening = new Date();
-      nextEvening.setHours(19, 0, 0, 0);
+      nextEvening.setHours(17, 0, 0, 0);
       if (nextEvening <= new Date()) {
         nextEvening.setDate(nextEvening.getDate() + 1); // Si ya pasó, mañana
       }
+
+      console.log('[NOTIF] Programando: mañana =', nextMorning.toLocaleString(), '| tarde =', nextEvening.toLocaleString());
 
       await LN.schedule({
         notifications: [
@@ -121,11 +136,8 @@ export async function scheduleMoodReminders(): Promise<boolean> {
             body: 'Registra cómo te sientes este momento. Tu bienestar importa.',
             iconColor: '#4EF2C8',
             schedule: {
-              on: {
-                hour: 8,
-                minute: 0,
-              },
-              repeats: true,
+              at: nextMorning,
+              every: 'day',
               allowWhileIdle: true,
             },
             actionTypeId: '',
@@ -134,14 +146,11 @@ export async function scheduleMoodReminders(): Promise<boolean> {
           {
             id: EVENING_NOTIF_ID,
             title: '🌙 Pausa emocional de la tarde',
-            body: '¿Cómo terminó tu día? Tómate un momento para registrarlo con Zhi.',
+            body: '¿Cómo te fue hoy? Tómate un momento para registrarlo con Zhi.',
             iconColor: '#4EF2C8',
             schedule: {
-              on: {
-                hour: 19,
-                minute: 0,
-              },
-              repeats: true,
+              at: nextEvening,
+              every: 'day',
               allowWhileIdle: true,
             },
             actionTypeId: '',
@@ -150,14 +159,16 @@ export async function scheduleMoodReminders(): Promise<boolean> {
         ],
       });
 
-      console.log('[NOTIF] Recordatorios programados: 8:00 AM y 7:00 PM diario ✅');
+      console.log('[NOTIF] Recordatorios programados: 7:00 AM y 5:00 PM hora local diario ✅');
       localStorage.setItem('zhi_notifications_enabled', 'true');
       return true;
     } catch (e) {
-      console.error('[NOTIF] Error scheduling notifications:', e);
+      console.error('[NOTIF] Error scheduling native notifications:', e);
       return false;
     }
   }
-  // ── Web fallback eliminado (Premium Native Feature) ──
-  return false;
+  // ── Web/PWA fallback: guardar preferencia, el Service Worker maneja las notificaciones ──
+  localStorage.setItem('zhi_notifications_enabled', 'true');
+  console.log('[NOTIF] Recordatorios activados (web/PWA) ✅');
+  return true;
 }

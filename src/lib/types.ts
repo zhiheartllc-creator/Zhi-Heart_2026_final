@@ -19,6 +19,8 @@ export interface ChatHistoryEntry {
   id: string;
   title: string;
   date: any;
+  messages?: { role: string; text: string }[];
+  sharedWithTherapist?: boolean;
   [key: string]: any;
 }
 

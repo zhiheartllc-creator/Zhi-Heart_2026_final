@@ -7,8 +7,10 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useSpeech } from '@/hooks/use-speech';
 import { Mic, Keyboard, ShieldCheck, Send, SmilePlus, User } from 'lucide-react';
-// AI flows are now called via API routes to prevent browser API Key errors
-// import { zhiChat } from '@/ai/flows/zhi-chat-flow'; // DELETED
+// En PWA: las llamadas IA van al servidor via /api/chat
+// En Android (nativo): las llamadas van directo a Gemini via zhiChatClient
+import { zhiChatClient, generateTitleClient, extractInsightsClient } from '@/lib/zhi-chat-client';
+import { Capacitor } from '@capacitor/core';
 
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, addDoc, Timestamp, query, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
@@ -110,7 +112,7 @@ function ChatPageContent() {
   }, [mode, user?.displayName, welcomeAudioPath]);
 
   if (mode === 'text') {
-    return <TextChatMode onBack={() => setMode('home')} user={user} userProfileData={userProfileData} longTermHistory={longTermHistory} initialMessages={continueMessages ?? undefined} />;
+    return <TextChatMode onBack={() => setMode('home')} user={user} userProfileData={userProfileData} longTermHistory={longTermHistory} initialMessages={continueMessages ?? undefined} searchParams={searchParams} />;
   }
 
   if (mode === 'voice') {
@@ -119,7 +121,8 @@ function ChatPageContent() {
 
   // SUB-HOME SCREEN
   return (
-    <div className="flex flex-col items-center justify-between min-h-screen bg-slate-50 relative overflow-hidden pb-20 pt-10 px-6">
+    <div className="flex flex-col items-center justify-between min-h-screen bg-slate-50 relative overflow-hidden pb-20 px-6"
+         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 40px)' }}>
       <div className="absolute top-0 w-full opacity-100 pointer-events-none z-0" style={{ height: '35vh' }}>
         <Image src="/fondo_chat.jpg" alt="Zhi Background" fill className="object-cover object-top" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50" />
@@ -132,16 +135,13 @@ function ChatPageContent() {
         <p className="text-slate-500 font-medium mb-12">¿Cómo prefieres interactuar hoy?</p>
 
         <div className="grid grid-cols-2 gap-4 w-full mb-12">
-          <Button 
-            onClick={() => setMode('voice')}
-            className="h-32 flex flex-col items-center justify-center gap-4 bg-white hover:bg-slate-100 text-slate-800 border shadow-sm rounded-2xl"
-            variant="outline"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#4EF2C8]/20 flex items-center justify-center text-[#25b591]">
+          <div className="h-32 flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-2xl shadow-sm opacity-60">
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                 <Mic className="w-6 h-6" />
             </div>
-            <span className="font-semibold">Modo Voz</span>
-          </Button>
+            <span className="font-semibold text-slate-400">Modo Voz</span>
+            <span className="text-[9px] font-bold tracking-wider uppercase text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Próximamente · Premium</span>
+          </div>
 
           <Button 
             onClick={() => setMode('text')}
@@ -171,11 +171,17 @@ function ChatPageContent() {
 // ---------------------------------------------------------
 // TEXT CHAT MODE
 // ---------------------------------------------------------
-function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialMessages }: { onBack: () => void, user: any, userProfileData?: any, longTermHistory?: string, initialMessages?: {role:'user'|'zhi', text:string}[] }) {
+function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialMessages, searchParams }: { onBack: () => void, user: any, userProfileData?: any, longTermHistory?: string, initialMessages?: {role:'user'|'zhi', text:string}[], searchParams: any }) {
   const defaultWelcome = { role: 'zhi' as const, text: "Hola... estoy aquí contigo. Toma un respiro profundo... Lo que compartes aquí es tuyo y se mantiene en privado. Si necesitas desahogarte... te escucho, sin juzgar." };
   const [messages, setMessages] = useState<{role: 'user'|'zhi', text: string}[]>(
     initialMessages && initialMessages.length > 0 ? initialMessages : [defaultWelcome]
   );
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll cuando llegan nuevos mensajes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Sync if initialMessages arrives after mount (shouldn't happen now, but safety net)
   useEffect(() => {
@@ -189,107 +195,146 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
   const [showEmojis, setShowEmojis] = useState(false);
   const [isShared, setIsShared] = useState(false);
 
+  // Use a state to track the ID of the current conversation to update it incrementally
+  const [activeChatId, setActiveChatId] = useState<string | null>(
+    searchParams?.get('continueId') || null
+  );
+
+  const isSharedRef = useRef(isShared);
+  const titleGeneratedRef = useRef(false);
   const messagesRef = useRef(messages);
-  const hasSavedRef = useRef(false);
+  const activeChatIdRef = useRef(activeChatId);
+  const userRef = useRef(user);
+  const userProfileDataRef = useRef(userProfileData);
 
+  useEffect(() => { isSharedRef.current = isShared; }, [isShared]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { userProfileDataRef.current = userProfileData; }, [userProfileData]);
+
+  // Update share status directly in DB if we already have an active chat
   useEffect(() => {
-    messagesRef.current = messages;
-    if (messages.length > 1) {
-      hasSavedRef.current = false;
+    if (activeChatId && user?.uid) {
+      updateDoc(doc(db, 'users', user.uid, 'chatHistory', activeChatId), {
+        sharedWithTherapist: isShared
+      }).catch(console.error);
     }
-  }, [messages]);
+  }, [isShared, activeChatId, user?.uid]);
 
-  useEffect(() => {
-    return () => {
-      const currentMessages = messagesRef.current;
-      if (currentMessages.length > 1 && !hasSavedRef.current && user) {
-        hasSavedRef.current = true;
-        const save = async () => {
-          // Extra verification of auth state before save
-          if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
-          
-          try {
-            const titleFetch = await fetch(`${getApiBaseUrl()}/api/generate-title`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ messages: currentMessages })
-            });
-            const titleRes = titleFetch.ok ? await titleFetch.json() : null;
-            const title = titleRes?.title || 'Conversación con Zhi';
-            await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-              title,
-              messages: currentMessages,
-              date: Timestamp.now(),
-              sharedWithTherapist: isShared
-            });
-
-            // Extract core insights from this conversation
-            const insightsRes = await fetch(`${getApiBaseUrl()}/api/extract-insights`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                messages: currentMessages,
-                existingInsights: userProfileData?.coreInsights || []
-              })
-            });
-            if (insightsRes.ok) {
-              const { updatedInsights } = await insightsRes.json();
-              await updateDoc(doc(db, 'users', user.uid), {
-                coreInsights: updatedInsights
-              });
-            }
-          } catch (err: any) {
-            if (err.code === 'permission-denied') return;
-             // Fallback save with generic title if title gen fails
-             await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-              title: 'Conversación con Zhi',
-              messages: currentMessages,
-              date: Timestamp.now(),
-              sharedWithTherapist: isShared
-            });
-          }
-        };
-        save();
-      }
-    };
-  }, [user]);
-
-  const handleBack = async () => {
-    if (messages.length > 1 && !hasSavedRef.current && !isSaving) {
-      setIsSaving(true);
-      hasSavedRef.current = true;
-      try {
+  // Helper: generate title eagerly (only once per conversation)
+  const generateAndSaveTitle = async (msgs: {role: string, text: string}[], chatId: string, uid: string) => {
+    if (titleGeneratedRef.current) return;
+    titleGeneratedRef.current = true;
+    try {
+      let finalTitle = 'Conversación con Zhi';
+      if (Capacitor.isNativePlatform()) {
+        finalTitle = await generateTitleClient(msgs);
+      } else {
         const titleFetch = await fetch(`${getApiBaseUrl()}/api/generate-title`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages })
+          body: JSON.stringify({ messages: msgs })
         });
-        const titleRes = titleFetch.ok ? await titleFetch.json() : null;
-        const title = titleRes?.title || 'Conversación con Zhi';
-        await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-          title,
-          messages,
-          date: Timestamp.now(),
-          sharedWithTherapist: isShared
-        });
+        if (titleFetch.ok) {
+          const titleRes = await titleFetch.json();
+          if (titleRes?.title) finalTitle = titleRes.title;
+        }
+      }
+      await updateDoc(doc(db, 'users', uid, 'chatHistory', chatId), { title: finalTitle });
+      console.log('[CHAT] Title generated:', finalTitle);
+    } catch (err) {
+      console.warn('[CHAT] Error generating title (non-blocking):', err);
+      titleGeneratedRef.current = false; // allow retry
+    }
+  };
 
-        // Extract and update core insights
+  // Helper: extract and save insights
+  const extractAndSaveInsights = async (msgs: {role: string, text: string}[], uid: string, profileData: any) => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const updatedInsights = await extractInsightsClient(msgs, profileData?.coreInsights || []);
+        await updateDoc(doc(db, 'users', uid), { coreInsights: updatedInsights });
+      } else {
         const insightsRes = await fetch(`${getApiBaseUrl()}/api/extract-insights`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages,
-            existingInsights: userProfileData?.coreInsights || []
+            messages: msgs,
+            existingInsights: profileData?.coreInsights || []
           })
         });
         if (insightsRes.ok) {
           const { updatedInsights } = await insightsRes.json();
-          await updateDoc(doc(db, 'users', user.uid), {
-            coreInsights: updatedInsights
-          });
+          await updateDoc(doc(db, 'users', uid), { coreInsights: updatedInsights });
+        }
+      }
+    } catch (err) {
+      console.warn('[CHAT] Error extracting insights (non-blocking):', err);
+    }
+  };
+
+  // Cleanup: when component unmounts (e.g. user navigates via bottom nav),
+  // generate title and extract insights if not done yet
+  useEffect(() => {
+    return () => {
+      const msgs = messagesRef.current;
+      const chatId = activeChatIdRef.current;
+      const uid = userRef.current?.uid;
+      const profile = userProfileDataRef.current;
+      if (msgs.length > 1 && chatId && uid) {
+        generateAndSaveTitle(msgs, chatId, uid);
+        extractAndSaveInsights(msgs, uid, profile);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Function to save/update the conversation in Firestore
+  const saveConversationProgress = async (currentMessages: {role: 'user'|'zhi', text: string}[]) => {
+    if (!user?.uid) return null;
+    
+    try {
+      if (activeChatId) {
+        // Update existing conversation
+        await updateDoc(doc(db, 'users', user.uid, 'chatHistory', activeChatId), {
+          messages: currentMessages,
+          date: Timestamp.now()
+        });
+        return activeChatId;
+      } else {
+        // Create new conversation
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
+          title: 'Nueva Conversación...',
+          messages: currentMessages,
+          date: Timestamp.now(),
+          sharedWithTherapist: isSharedRef.current
+        });
+        setActiveChatId(docRef.id);
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error("Error saving conversation progress:", error);
+      return activeChatId;
+    }
+  };
+
+  const handleBack = async () => {
+    if (messages.length > 1 && activeChatId && !isSaving) {
+      setIsSaving(true);
+      try {
+        // Save latest messages
+        await saveConversationProgress(messages);
+        // Title + insights are generated by the cleanup effect on unmount,
+        // but also eagerly after first AI response. If not done yet, trigger now.
+        if (!titleGeneratedRef.current && user?.uid) {
+          await generateAndSaveTitle(messages, activeChatId, user.uid);
+        }
+        if (user?.uid) {
+          await extractAndSaveInsights(messages, user.uid, userProfileData);
         }
       } catch (err) {
-        console.error("Error al guardar el historial:", err);
+        console.error("Error during finalize chat:", err);
       } finally {
         setIsSaving(false);
         onBack();
@@ -302,9 +347,14 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     const userMessage = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    
+    const newMessages = [...messages, { role: 'user' as const, text: userMessage }];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
+
+    // Eagerly save the user's message so we don't lose it if they exit immediately
+    await saveConversationProgress(newMessages);
 
     const historyText = messages.map(m => `${m.role === 'user' ? 'Usuario' : 'Zhi'}: ${m.text}`).join('\n');
     const fullHistory = longTermHistory ? `--- CONVERSACIONES PASADAS ---\n${longTermHistory}\n--- CONVERSACIÓN ACTUAL ---\n${historyText}` : historyText;
@@ -316,21 +366,45 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
         chatHistorySummary: fullHistory,
         coreInsights: userProfileData?.coreInsights || []
       };
-      
-      const res = await fetch(`${getApiBaseUrl()}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rawPayload)
-      });
-      
-      if (!res.ok) throw new Error("API Route Failed");
-      
-      const response = await res.json();
-      const zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?";
-      setMessages(prev => [...prev, { role: 'zhi', text: zhiText }]);
+
+      let zhiText: string;
+
+      if (Capacitor.isNativePlatform()) {
+        // Android: llamar a Gemini directamente desde el cliente
+        console.log('[CHAT-TEXT] Usando llamada directa a Gemini (nativo)');
+        const result = await zhiChatClient(rawPayload);
+        zhiText = result.zhiHeartResponse;
+      } else {
+        // PWA: usar la ruta del servidor
+        const res = await fetch(`${getApiBaseUrl()}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rawPayload)
+        });
+        if (!res.ok) throw new Error("API Route Failed");
+        const response = await res.json();
+        zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?";
+      }
+
+      const finalMessages = [...newMessages, { role: 'zhi' as const, text: zhiText }];
+      setMessages(finalMessages);
+      // Eagerly save AI's response
+      const savedId = await saveConversationProgress(finalMessages);
+
+      // Eagerly generate title after first meaningful exchange (user + AI)
+      // This ensures the title exists even if the user navigates away without clicking back
+      if (savedId && !titleGeneratedRef.current && user?.uid) {
+        const userMsgCount = finalMessages.filter(m => m.role === 'user').length;
+        if (userMsgCount >= 1) {
+          generateAndSaveTitle(finalMessages, savedId, user.uid);
+        }
+      }
+
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'zhi', text: "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?" }]);
+      console.error('[CHAT-TEXT] Error:', error);
+      const fallbackMessages = [...newMessages, { role: 'zhi' as const, text: "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?" }];
+      setMessages(fallbackMessages);
+      await saveConversationProgress(fallbackMessages);
     } finally {
       setIsLoading(false);
     }
@@ -338,7 +412,8 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50">
-      <div className="p-4 border-b flex items-center justify-between bg-white shadow-sm z-10 sticky top-0">
+      <div className="p-4 border-b flex items-center justify-between bg-white shadow-sm z-10 sticky top-0"
+           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
         <Button variant="ghost" size="sm" onClick={handleBack} disabled={isSaving} className="text-slate-500 w-[80px] justify-start pl-0">
             {isSaving ? '...' : '← Volver'}
         </Button>
@@ -374,7 +449,8 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
             )}
           </div>
         ))}
-        {isLoading && (
+         <div ref={messagesEndRef} />
+         {isLoading && (
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-2xl p-4 bg-white text-slate-400 rounded-tl-none border animate-pulse flex space-x-2">
               <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
@@ -385,7 +461,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
         )}
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-100 shadow-lg pb-6">
+      <div className="p-4 bg-white border-t border-slate-100 shadow-lg relative z-20">
         {showEmojis && (
           <div className="w-full max-w-3xl mx-auto flex gap-3 mb-3 px-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {[
@@ -452,16 +528,99 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
   const { speak } = useSpeech();
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
 
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  const titleGeneratedRef = useRef(false);
   const messagesRef = useRef(messages);
-  const hasSavedRef = useRef(false);
+  const activeChatIdRef = useRef(activeChatId);
+  const userRef = useRef(user);
+  const userProfileDataRef = useRef(userProfileData);
+
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { userProfileDataRef.current = userProfileData; }, [userProfileData]);
+
+  // Helper: generate title eagerly (only once per conversation)
+  const generateAndSaveTitleVoice = async (msgs: {role: string, text: string}[], chatId: string, uid: string) => {
+    if (titleGeneratedRef.current) return;
+    titleGeneratedRef.current = true;
+    try {
+      let finalTitle = 'Conversación de Voz';
+      if (Capacitor.isNativePlatform()) {
+        finalTitle = await generateTitleClient(msgs);
+      } else {
+        const titleFetch = await fetch(`${getApiBaseUrl()}/api/generate-title`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: msgs })
+        });
+        if (titleFetch.ok) {
+          const titleRes = await titleFetch.json();
+          if (titleRes?.title) finalTitle = titleRes.title;
+        }
+      }
+      await updateDoc(doc(db, 'users', uid, 'chatHistory', chatId), { title: finalTitle });
+      console.log('[CHAT-VOICE] Title generated:', finalTitle);
+    } catch (err) {
+      console.warn('[CHAT-VOICE] Error generating title (non-blocking):', err);
+      titleGeneratedRef.current = false;
+    }
+  };
+
+  const extractAndSaveInsightsVoice = async (msgs: {role: string, text: string}[], uid: string, profileData: any) => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const updatedInsights = await extractInsightsClient(msgs, profileData?.coreInsights || []);
+        await updateDoc(doc(db, 'users', uid), { coreInsights: updatedInsights });
+      } else {
+        const insightsRes = await fetch(`${getApiBaseUrl()}/api/extract-insights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: msgs,
+            existingInsights: profileData?.coreInsights || []
+          })
+        });
+        if (insightsRes.ok) {
+          const { updatedInsights } = await insightsRes.json();
+          await updateDoc(doc(db, 'users', uid), { coreInsights: updatedInsights });
+        }
+      }
+    } catch (err) {
+      console.warn('[CHAT-VOICE] Error extracting insights (non-blocking):', err);
+    }
+  };
+
+  // Function to save/update the conversation in Firestore
+  const saveConversationProgress = async (currentMessages: {role: 'user'|'zhi', text: string}[]) => {
+    if (!user?.uid) return null;
+    
+    try {
+      if (activeChatId) {
+        await updateDoc(doc(db, 'users', user.uid, 'chatHistory', activeChatId), {
+          messages: currentMessages,
+          date: Timestamp.now()
+        });
+        return activeChatId;
+      } else {
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
+          title: 'Conversación de Voz...',
+          messages: currentMessages,
+          date: Timestamp.now(),
+          sharedWithTherapist: false
+        });
+        setActiveChatId(docRef.id);
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error("Error saving voice conversation progress:", error);
+      return activeChatId;
+    }
+  };
 
   useEffect(() => {
-    messagesRef.current = messages;
-    if (messages.length > 1) hasSavedRef.current = false;
-  }, [messages]);
-
-  useEffect(() => {
-    // Stop speaking if leaving
+    // Stop speaking if leaving + generate title/insights
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
          window.speechSynthesis.cancel();
@@ -469,38 +628,18 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
       if (recognitionInstance) {
           recognitionInstance.stop();
       }
-
-      const currentMessages = messagesRef.current;
-      if (currentMessages.length > 1 && !hasSavedRef.current && user) {
-        hasSavedRef.current = true;
-        const save = async () => {
-          try {
-            const titleFetch = await fetch(`${getApiBaseUrl()}/api/generate-title`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ messages: currentMessages })
-            });
-            const titleRes = titleFetch.ok ? await titleFetch.json() : null;
-            const title = titleRes?.title || 'Conversación de Voz';
-            await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-              title,
-              messages: currentMessages,
-              date: Timestamp.now(),
-              sharedWithTherapist: false
-            });
-          } catch (err) {
-             await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-              title: 'Conversación de Voz',
-              messages: currentMessages,
-              date: Timestamp.now(),
-              sharedWithTherapist: false
-            });
-          }
-        };
-        save();
+      // Generate title + insights on unmount
+      const msgs = messagesRef.current;
+      const chatId = activeChatIdRef.current;
+      const uid = userRef.current?.uid;
+      const profile = userProfileDataRef.current;
+      if (msgs.length > 0 && chatId && uid) {
+        generateAndSaveTitleVoice(msgs, chatId, uid);
+        extractAndSaveInsightsVoice(msgs, uid, profile);
       }
     };
-  }, [recognitionInstance, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recognitionInstance]);
 
   const toggleListen = () => {
     if (isListening && recognitionInstance) {
@@ -554,8 +693,12 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
 
   const processVoiceInput = async (text: string) => {
     setIsProcessing(true);
-    const userMsg = { role: 'user', text };
-    setMessages(prev => [...prev, userMsg as any]);
+    const userMsg = { role: 'user' as const, text };
+    
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    await saveConversationProgress(newMessages);
+
     try {
       const historyText = messages.map(m => `${m.role === 'user' ? 'Usuario' : 'Zhi'}: ${m.text}`).join('\n');
       const fullHistory = longTermHistory ? `--- CONVERSACIONES PASADAS ---\n${longTermHistory}\n--- CONVERSACIÓN ACTUAL ---\n${historyText}` : historyText;
@@ -566,25 +709,41 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
         chatHistorySummary: fullHistory,
         coreInsights: userProfileData?.coreInsights || []
       };
-      
-      const res = await fetch(`${getApiBaseUrl()}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rawPayload)
-      });
-      
-      if (!res.ok) throw new Error("API Route Failed");
-      
-      const response = await res.json();
-      const zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema para procesar tu voz. ¿Podemos intentarlo de nuevo?";
+
+      let zhiText: string;
+
+      if (Capacitor.isNativePlatform()) {
+        console.log('[CHAT-VOICE] Usando llamada directa a Gemini (nativo)');
+        const result = await zhiChatClient(rawPayload);
+        zhiText = result.zhiHeartResponse;
+      } else {
+        const res = await fetch(`${getApiBaseUrl()}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rawPayload)
+        });
+        if (!res.ok) throw new Error("API Route Failed");
+        const response = await res.json();
+        zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema para procesar tu voz. ¿Podemos intentarlo de nuevo?";
+      }
+
       setZhiResponse(zhiText);
-      setMessages(prev => [...prev, { role: 'zhi', text: zhiText } as any]);
+      const finalMessages = [...newMessages, { role: 'zhi' as const, text: zhiText }];
+      setMessages(finalMessages);
+      const savedId = await saveConversationProgress(finalMessages);
       speak(zhiText);
+
+      // Eagerly generate title after first voice exchange
+      if (savedId && !titleGeneratedRef.current && user?.uid) {
+        generateAndSaveTitleVoice(finalMessages, savedId, user.uid);
+      }
     } catch (error) {
-      console.error(error);
+      console.error('[CHAT-VOICE] Error:', error);
       const fallbackMsg = "Lo siento, tuve un problema para procesar tu voz. ¿Podemos intentarlo de nuevo?";
       setZhiResponse(fallbackMsg);
-      setMessages(prev => [...prev, { role: 'zhi', text: fallbackMsg } as any]);
+      const fallbackMessages = [...newMessages, { role: 'zhi' as const, text: fallbackMsg }];
+      setMessages(fallbackMessages);
+      await saveConversationProgress(fallbackMessages);
       speak(fallbackMsg);
     } finally {
       setIsProcessing(false);
@@ -592,41 +751,18 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
   };
 
   const handleBack = async () => {
-    if (messages.length > 0 && !hasSavedRef.current && !isSaving) {
+    if (messages.length > 0 && activeChatId && !isSaving) {
       setIsSaving(true);
-      hasSavedRef.current = true;
       try {
-        const titleFetch = await fetch(`${getApiBaseUrl()}/api/generate-title`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages })
-        });
-        const titleRes = titleFetch.ok ? await titleFetch.json() : null;
-        const title = titleRes?.title || 'Conversación de Voz';
-        await addDoc(collection(db, 'users', user.uid, 'chatHistory'), {
-          title,
-          messages,
-          date: Timestamp.now(),
-          sharedWithTherapist: false
-        });
-
-        // Extract and update core insights
-        const insightsRes = await fetch(`${getApiBaseUrl()}/api/extract-insights`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages,
-            existingInsights: userProfileData?.coreInsights || []
-          })
-        });
-        if (insightsRes.ok) {
-          const { updatedInsights } = await insightsRes.json();
-          await updateDoc(doc(db, 'users', user.uid), {
-            coreInsights: updatedInsights
-          });
+        await saveConversationProgress(messages);
+        if (!titleGeneratedRef.current && user?.uid) {
+          await generateAndSaveTitleVoice(messages, activeChatId, user.uid);
+        }
+        if (user?.uid) {
+          await extractAndSaveInsightsVoice(messages, user.uid, userProfileData);
         }
       } catch (err) {
-        console.error("Error al guardar el historial:", err);
+        console.error("Error al finalizar historial de voz:", err);
       } finally {
         setIsSaving(false);
         onBack();
@@ -638,7 +774,7 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute top-4 left-4 z-50">
+        <div className="absolute left-4 z-50" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
             <Button variant="ghost" onClick={handleBack} disabled={isSaving} size="sm" className="bg-white/10 hover:bg-white/20 backdrop-blur text-white rounded-full shadow-sm">
                 {isSaving ? 'Guardando...' : '← Terminar charla'}
             </Button>

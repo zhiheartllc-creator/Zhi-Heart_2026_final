@@ -103,9 +103,12 @@ const createUserProfileDocument = async (user: import('firebase/auth').User, add
 /**
  * Inicializa el plugin de Google Auth para plataformas nativas.
  */
+let _googleAuthInitialized = false;
+
 const initGoogleAuth = async () => {
   const isNative = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform();
   if (!isNative) return;
+  if (_googleAuthInitialized) return; // Ya inicializado, no repetir
 
   try {
     const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
@@ -114,6 +117,7 @@ const initGoogleAuth = async () => {
       scopes: ['profile', 'email'],
       grantOfflineAccess: true,
     });
+    _googleAuthInitialized = true;
     console.log('[FIREBASE] GoogleAuth initialized successfully');
   } catch (err) {
     console.error('[FIREBASE] Failed to initialize GoogleAuth:', err);
@@ -126,12 +130,13 @@ const signInWithGoogle = async () => {
   return result;
 };
 
-const signInWithGoogleNative = async () => {
+const signInWithGoogleNative = async (): Promise<import('firebase/auth').UserCredential> => {
   try {
     const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
     const { GoogleAuthProvider: FirebaseAuthProvider, signInWithCredential } = await import('firebase/auth');
 
-    // Aseguramos que esté inicializado
+    // initGoogleAuth() ahora es idempotente gracias al flag _googleAuthInitialized.
+    // Si use-auth.tsx ya lo llamó al montar, este call retorna inmediatamente.
     await initGoogleAuth();
 
     console.log('[FIREBASE] Starting GoogleAuth.signIn()...');
@@ -141,16 +146,32 @@ const signInWithGoogleNative = async () => {
     const idToken = googleUser?.authentication?.idToken;
     if (!idToken) {
       console.error('[FIREBASE] Missing idToken in googleUser:', googleUser);
-      throw new Error('Google Sign-In no devolvió un idToken. Verifica la configuración en Firebase.');
+      throw new Error(
+        'Google Sign-In no devolvió un token. ' +
+        'Verifica que el SHA-1 de tu APK esté registrado en Firebase Console ' +
+        'y que hayas descargado el google-services.json actualizado.'
+      );
     }
 
     const credential = FirebaseAuthProvider.credential(idToken);
+    console.log('[FIREBASE] Calling signInWithCredential...');
     const result = await signInWithCredential(auth, credential);
-    console.log('[FIREBASE] Firebase Sign-In successful for:', result.user.email);
-    
-    await createUserProfileDocument(result.user);
+    console.log('[FIREBASE] signInWithCredential successful for:', result.user.email);
+
+    // signInWithCredential ya persiste la sesión en Firebase Auth.
+    // Creamos el perfil en Firestore de forma no-bloqueante.
+    createUserProfileDocument(result.user).catch((err) =>
+      console.warn('[FIREBASE] createUserProfileDocument error (non-blocking):', err)
+    );
+
     return result;
-  } catch (error) {
+
+  } catch (error: any) {
+    // Si el usuario canceló el selector de cuenta de Google, no es un error real
+    if (error?.error === 'popup_closed_by_user' || error?.message?.includes('cancel')) {
+      console.log('[FIREBASE] Google Sign-In cancelled by user');
+      throw new Error('Inicio de sesión cancelado. Inténtalo de nuevo.');
+    }
     console.error('[FIREBASE] Error in native Google Auth:', error);
     throw error;
   }

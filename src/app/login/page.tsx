@@ -16,7 +16,7 @@ import { Capacitor } from '@capacitor/core';
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, initializing, markJustSignedIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,11 +24,11 @@ export default function LoginPage() {
 
   // Redirigir al dashboard si ya hay sesión iniciada
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!initializing && !authLoading && user) {
       console.log('[LOGIN] Usuario ya autenticado, redirigiendo a dashboard...');
       router.push('/dashboard');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, initializing, router]);
 
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -55,12 +55,30 @@ export default function LoginPage() {
     try {
       if (Capacitor.isNativePlatform()) {
         console.log('[LOGIN] iniciando Google login nativo');
+        // Marcamos que un login está en progreso para que el dashboard no redirija a /login
+        markJustSignedIn();
         await signInWithGoogleNative();
-        // En nativo, NO hacemos router.push aquí. La redirección la maneja el
-        // useEffect de abajo que observa el estado de autenticación confirmado.
-        console.log('[LOGIN] Google nativo completado, esperando onAuthStateChanged...');
+        console.log('[LOGIN] Google nativo completado, esperando auth.currentUser...');
+        
+        // Esperar a que auth.currentUser exista (puede tardar unos ms en Android)
+        const waitForUser = () => new Promise<void>((resolve) => {
+          if (auth.currentUser) return resolve();
+          let attempts = 0;
+          const interval = setInterval(() => {
+            attempts++;
+            if (auth.currentUser || attempts > 40) { // max ~8 segundos
+              clearInterval(interval);
+              resolve();
+            }
+          }, 200);
+        });
+        await waitForUser();
+        
+        console.log('[LOGIN] auth.currentUser:', auth.currentUser?.email || 'null', '— redirigiendo...');
+        router.replace('/dashboard');
       } else {
         console.log('[LOGIN] iniciando Google login web');
+        markJustSignedIn();
         await signInWithGoogle();
         // En web el popup es sincrónico con el state, podemos navegar directamente.
         router.push('/dashboard');
@@ -78,7 +96,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 relative overflow-hidden"
+         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Background Decorators */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image src="/Corazon_Zhi.jpg" alt="Background" fill className="object-cover opacity-20" priority />
@@ -86,7 +105,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-white/10 pointer-events-none z-0" />
 
       {/* Zhi Logo */}
-      <div className="mb-6 z-10 flex flex-col items-center">
+      <div className="mb-6 z-10 flex flex-col items-center mt-4">
         <Image src="https://i.imgur.com/SN7UgJ3.jpeg" alt="Zhi" width={64} height={64} className="rounded-2xl shadow-sm mb-3" />
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Zhi</h1>
       </div>

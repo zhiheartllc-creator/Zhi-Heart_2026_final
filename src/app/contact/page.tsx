@@ -1,5 +1,10 @@
 'use client';
 
+// Prevent Next.js from prerendering this page during SSR build.
+// Firebase client SDK (onSnapshot) can't run in Node.js.
+// This is ignored during static export (build:android) since all pages are static.
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -89,9 +94,13 @@ export default function ContactPage() {
         
         {/* Assigned Psychologist Section */}
         <section>
-          <div className="flex items-center gap-2 mb-4 px-1">
+          <div className="flex items-center gap-2 mb-2 px-1">
             <User className="w-6 h-6 text-slate-800" />
             <h2 className="text-xl font-bold text-slate-800">Mi Psicólogo Asignado</h2>
+          </div>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">⚡ Modo de prueba</span>
+            <span className="text-[10px] font-bold tracking-wide uppercase text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Premium · Próximamente</span>
           </div>
           
           <Card className="p-5 md:p-6 bg-white shadow-sm border border-slate-100 rounded-2xl">

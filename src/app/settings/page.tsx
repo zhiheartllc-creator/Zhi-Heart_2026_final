@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -253,6 +253,10 @@ export default function SettingsPage() {
                 <h3 className="font-bold text-slate-900 text-lg">Mi Psicólogo</h3>
               </div>
               <p className="text-xs text-slate-500 -mt-3">Gestiona tu psicólogo asignado.</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">⚡ Modo de prueba</span>
+                <span className="text-[10px] font-bold tracking-wide uppercase text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Premium · Próximamente</span>
+              </div>
 
               <div className="border border-slate-200 rounded-lg p-3 flex justify-between items-center bg-slate-50">
                 <div>
@@ -279,7 +283,11 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-slate-500 -mt-3">Gestiona tu cuenta y tus datos.</p>
 
-              <Button variant="outline" className="w-full bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 shadow-sm text-sm">
+              <Button 
+                variant="outline" 
+                className="w-full bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 shadow-sm text-sm"
+                onClick={() => window.open('https://zhiheart.net/es/contacto-bienestar-emocional', '_blank')}
+              >
                 Solicitar eliminación de cuenta y datos
               </Button>
             </CardContent>
@@ -287,19 +295,8 @@ export default function SettingsPage() {
           
         </section>
 
-        {/* CERRAR SESIÓN (Extra addition) */}
-        <section className="pt-2 pb-8 flex justify-center">
-            <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Cerrar Sesión
-            </Button>
-        </section>
-
-      </div>
-
-      {/* Sticky Save Button bottom bar */}
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent z-40 pointer-events-none">
-        <div className="max-w-2xl mx-auto pointer-events-auto">
+        {/* Guardar Cambios + Cerrar Sesión */}
+        <section className="pt-4 pb-8 space-y-3">
           <Button 
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-6 rounded-2xl shadow-xl transition-all"
             onClick={handleSave}
@@ -307,7 +304,14 @@ export default function SettingsPage() {
           >
             {isSaving ? "Guardando..." : "Guardar Cambios"}
           </Button>
-        </div>
+          <div className="flex justify-center">
+            <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar Sesión
+            </Button>
+          </div>
+        </section>
+
       </div>
       
     </div>

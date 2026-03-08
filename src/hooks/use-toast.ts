@@ -102,7 +102,22 @@ function useToast() {
       const id = genId()
       const update = (props: ToasterToast) => dispatch({ type: "UPDATE_TOAST", toast: { ...props, id } })
       const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
-      dispatch({ type: "ADD_TOAST", toast: { ...props, id, open: true, onOpenChange: (open: boolean) => { if (!open) dismiss() } } })
+      
+      dispatch({ 
+        type: "ADD_TOAST", 
+        toast: { 
+          ...props, 
+          id, 
+          open: true, 
+          onOpenChange: (open: boolean) => { if (!open) dismiss() } 
+        } 
+      })
+
+      const duration = (props as any).duration || 5000;
+      setTimeout(() => {
+        dismiss();
+      }, duration);
+
       return { id, dismiss, update }
     },
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),

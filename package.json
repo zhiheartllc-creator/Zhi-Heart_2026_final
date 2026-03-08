@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "build:static": "npm run clean:sw && cross-env NEXT_OUTPUT=export next build",
-    "build:android": "npm run clean:sw && cross-env NEXT_OUTPUT=export NEXT_PUBLIC_API_BASE_URL=https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app next build",
+    "build:android": "npm run clean:sw && cross-env NEXT_OUTPUT=export NEXT_PUBLIC_API_BASE_URL=https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app NEXT_PUBLIC_GEMINI_API_KEY=AIzaSyB0OdGhAxzPMegjpPX7as14ec0CoMd6huA next build",
     "clean:sw": "node -e \"const fs=require('fs'); ['public/sw.js','out/sw.js'].forEach(f=>{try{fs.unlinkSync(f);console.log('Deleted',f)}catch(e){}})\"",
     "deploy:android": "npm run build:android && npx cap copy android",
     "deploy:firestore": "firebase deploy --only firestore",
