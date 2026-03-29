@@ -501,6 +501,33 @@ export default function DashboardPage() {
     }, [user, loading, initializing, justSignedIn, router]);
   const { toast } = useToast();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [assignedPsychologist, setAssignedPsychologist] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchAssignedPsychologist = async () => {
+      try {
+        const qReq = query(
+          collection(db, 'requests'),
+          where('userId', '==', user.uid),
+          where('status', '==', 'accepted')
+        );
+        const reqSnapshot = await getDocs(qReq);
+        if (!reqSnapshot.empty) {
+          const psychId = reqSnapshot.docs[0].data().psychologistId;
+          const psychSnap = await getDoc(doc(db, 'users', psychId));
+          if (psychSnap.exists()) {
+            setAssignedPsychologist({ uid: psychSnap.id, ...psychSnap.data() });
+          }
+        }
+      } catch (error) {
+        console.error("[DASHBOARD] Error fetching assigned psychologist:", error);
+      }
+    };
+
+    fetchAssignedPsychologist();
+  }, [user]);
 
   // Activate daily mood reminder notifications
   useMoodReminder(!!user);
@@ -566,7 +593,13 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <RecentHistoryCard />
-          <DashboardCard icon={HeartHandshake} title="Psicólogo" description="Inicia una conversación segura." href="/contact" imageUrl="/TARJETA_CONTACTAR_PSICOLOGO.jpg" />
+          <DashboardCard 
+            icon={HeartHandshake} 
+            title="Psicólogo" 
+            description={assignedPsychologist ? `Psicólogo: ${assignedPsychologist.name}` : "Inicia una conversación segura."} 
+            href={assignedPsychologist ? `/messages/${assignedPsychologist.uid}` : "/contact"} 
+            imageUrl="/TARJETA_CONTACTAR_PSICOLOGO.jpg" 
+          />
         </div>
       </main>
     </div>

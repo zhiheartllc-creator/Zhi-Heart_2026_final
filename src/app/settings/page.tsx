@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, User, Mail, MapPin, Palette, LogOut, ChevronDown, Bell, Shield, Users, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LoadingAnimation } from '@/components/loading-animation';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [dailyReminders, setDailyReminders] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [assignedPsychologist, setAssignedPsychologist] = useState<any>(null);
   
   const { isMuted, toggleMute } = useSpeech();
 
@@ -48,6 +49,21 @@ export default function SettingsPage() {
           if (data.country) setCountry(data.country);
           if (data.dailyReminders !== undefined) setDailyReminders(data.dailyReminders);
           setIsPremium(data.isPremium || false);
+        }
+
+        // Buscar psicólogo asignado (solicitud aceptada)
+        const qReq = query(
+          collection(db, 'requests'),
+          where('userId', '==', user.uid),
+          where('status', '==', 'accepted')
+        );
+        const reqSnapshot = await getDocs(qReq);
+        if (!reqSnapshot.empty) {
+          const requestId = reqSnapshot.docs[0].data().psychologistId;
+          const psychSnap = await getDoc(doc(db, 'users', requestId));
+          if (psychSnap.exists()) {
+            setAssignedPsychologist({ uid: psychSnap.id, ...psychSnap.data() });
+          }
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -275,16 +291,28 @@ export default function SettingsPage() {
               </div>
 
               <div className="border border-slate-200 rounded-lg p-3 flex justify-between items-center bg-slate-50">
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900">Dr. Angarita</h4>
-                  <p className="text-xs text-slate-400">Psicólogo Clínico</p>
+                <div className="flex-1 mr-2">
+                  <h4 className="font-bold text-sm text-slate-900 truncate max-w-[150px]">
+                    {assignedPsychologist?.name || 'Dr. Angarita'}
+                  </h4>
+                  <p className="text-xs text-slate-400 truncate">
+                    {assignedPsychologist?.specialties || 'Psicólogo Clínico'}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" className="bg-white border-slate-200 text-slate-800 text-xs shadow-sm">
+                <Button 
+                  variant="outline" 
+                   size="sm" 
+                   className="bg-white border-slate-200 text-slate-800 text-xs shadow-sm h-8 px-3 rounded-lg flex-shrink-0"
+                   onClick={() => router.push('/contact')}
+                >
                   Ver Perfil
                 </Button>
               </div>
 
-              <Button className="w-full bg-[#4EF2C8] hover:bg-[#3ce5bb] text-slate-900 font-semibold shadow-sm">
+              <Button 
+                onClick={() => router.push('/contact')}
+                className="w-full bg-[#4EF2C8] hover:bg-[#3ce5bb] text-slate-900 font-semibold shadow-sm h-11 rounded-xl"
+              >
                 <Users className="w-4 h-4 mr-2" />
                 Cambiar de Psicólogo
               </Button>
