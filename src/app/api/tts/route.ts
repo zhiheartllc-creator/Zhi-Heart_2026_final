@@ -10,12 +10,33 @@ const client = new textToSpeech.TextToSpeechClient({
   projectId: process.env.GOOGLE_PROJECT_ID,
 });
 
+const allowedOrigins = [
+  'https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app',
+  'capacitor://localhost',
+  'http://localhost'
+];
+
+const corsHeaders = {
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
+  const origin = req.headers.get('origin');
+  const headers = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+  };
+
   try {
     const { text } = await req.json();
 
     if (!text) {
-      return NextResponse.json({ error: "Texto requerido" }, { status: 400 });
+      return NextResponse.json({ error: "Texto requerido" }, { status: 400, headers });
     }
 
     console.log(`[API-TTS] Request received for text: "${text.substring(0, 30)}..." with Google Cloud TTS`);
@@ -48,7 +69,9 @@ export async function POST(req: Request) {
     }
 
     return new Response(Buffer.from(response.audioContent as Uint8Array), {
+      status: 200,
       headers: {
+        ...headers,
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",
       },
@@ -57,7 +80,7 @@ export async function POST(req: Request) {
     console.error("[API-TTS] Google TTS Error:", error);
     return NextResponse.json(
       { error: "Error interno al generar audio" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

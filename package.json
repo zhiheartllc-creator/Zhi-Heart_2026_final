@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "npm run build:static",
     "build:static": "node scripts/build-manager.js clean && next build",
-    "build:android": "node scripts/build-manager.js pre && cross-env NEXT_OUTPUT=export NEXT_PUBLIC_API_BASE_URL=https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app NEXT_PUBLIC_GEMINI_API_KEY=AIzaSyB5jbl8tGphw0-yeHyx9uKHGbGGOJlgSSc next build && node scripts/build-manager.js post",
+    "build:android": "node scripts/build-manager.js pre && cross-env NEXT_OUTPUT=export NEXT_PUBLIC_API_BASE_URL=https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app next build && node scripts/build-manager.js post",
     "clean:sw": "node scripts/build-manager.js clean",
     "deploy:android": "npm run build:android && npx cap copy android",
     "deploy:firestore": "firebase deploy --only firestore",
@@ -53,6 +53,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.4",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.0",
     "zod": "^4.3.6"
