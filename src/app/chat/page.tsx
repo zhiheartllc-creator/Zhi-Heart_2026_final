@@ -6,20 +6,46 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useSpeech } from '@/hooks/use-speech';
-import { Mic, Keyboard, ShieldCheck, Send, SmilePlus, User } from 'lucide-react';
+import { Mic, Keyboard, ShieldCheck, Send, SmilePlus, User, Lock, Volume2, Loader2 } from 'lucide-react';
 // En PWA: las llamadas IA van al servidor via /api/chat
 // En Android (nativo): las llamadas van directo a Gemini via zhiChatClient
 import { zhiChatClient, generateTitleClient, extractInsightsClient } from '@/lib/zhi-chat-client';
 import { Capacitor } from '@capacitor/core';
 
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, Timestamp, query, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, Timestamp, query, orderBy, limit, getDocs, updateDoc, onSnapshot } from 'firebase/firestore';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { cn, getApiBaseUrl } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type ChatMode = 'home' | 'text' | 'voice';
+
+const speakTextWithTTS = async (text: string, voiceIdOverride?: string) => {
+  try {
+    const baseUrl = getApiBaseUrl();
+    console.log(`[TTS] Requesting audio for: "${text.substring(0, 30)}..." at ${baseUrl}/api/tts`);
+    const res = await fetch(`${baseUrl}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voiceIdOverride }),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || "No audio");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    await audio.play();
+  } catch (err: any) {
+    // We use console.log instead of console.error to avoid triggering Next.js 15 Error Overlay in dev
+    console.log("[TTS] Play error:", err.message);
+    alert(
+      "Error al generar/reproducir la voz: " + err.message
+    );
+  }
+};
 
 export default function ChatPage() {
   return (
@@ -39,34 +65,53 @@ function ChatPageContent() {
   const [continueMessages, setContinueMessages] = useState<{role:'user'|'zhi', text:string}[] | null>(null);
   const { speak } = useSpeech();
 
+  const hasFetchedHistory = useRef(false);
+
   // Fetch complete user profile & past chat history from Firestore for AI Context
   useEffect(() => {
-    if (user?.uid) {
-      getDoc(doc(db, 'users', user.uid)).then((document) => {
-        if (document.exists()) {
-          const sanitizedData = JSON.parse(JSON.stringify(document.data()));
-          setUserProfileData(sanitizedData);
-        }
-      }).catch((err) => {
-        if (err.code !== 'permission-denied') {
-          console.error("Profile fetch error:", err);
-        }
-      });
+    if (!user?.uid) return;
 
-      const q = query(collection(db, 'users', user.uid, 'chatHistory'), orderBy('date', 'desc'), limit(10));
-      getDocs(q).then((snapshot: any) => {
-         const pastChats = snapshot.docs.map((doc: any) => {
-            const data = doc.data();
-            const msgs = data.messages || [];
-            return msgs.map((m: any) => `${m.role === 'user' ? 'Usuario' : 'Zhi'}: ${m.text}`).join('\n');
-         }).reverse().join('\n---\n');
-         setLongTermHistory(pastChats);
-      }).catch((err) => {
-        if (err.code !== 'permission-denied') {
-          console.error("History fetch error:", err);
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (document) => {
+      if (document.exists()) {
+        const sanitizedData = JSON.parse(JSON.stringify(document.data()));
+        setUserProfileData(sanitizedData);
+        
+        const isPremium = sanitizedData.isPremium || false;
+        
+        if (!hasFetchedHistory.current) {
+          hasFetchedHistory.current = true;
+          const q = query(collection(db, 'users', user.uid, 'chatHistory'), orderBy('date', 'desc'), limit(isPremium ? 50 : 10));
+          getDocs(q).then((snapshot: any) => {
+             let docs = snapshot.docs;
+             if (!isPremium) {
+                 const threeDaysAgo = new Date();
+                 threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                 docs = docs.filter((d: any) => {
+                     const t = d.data().date;
+                     const date = t?.toDate ? t.toDate() : new Date(t || 0);
+                     return date >= threeDaysAgo;
+                 });
+             }
+             const pastChats = docs.map((doc: any) => {
+                const data = doc.data();
+                const msgs = data.messages || [];
+                return msgs.map((m: any) => `${m.role === 'user' ? 'Usuario' : 'Zhi'}: ${m.text}`).join('\n');
+             }).reverse().join('\n---\n');
+             setLongTermHistory(pastChats);
+          }).catch((err) => {
+            if (err.code !== 'permission-denied') {
+              console.error("History fetch error:", err);
+            }
+          });
         }
-      });
-    }
+      }
+    }, (err) => {
+      if (err.code !== 'permission-denied') {
+        console.error("Profile fetch error:", err);
+      }
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   // Handle continueId from URL — load previous conversation
@@ -124,7 +169,7 @@ function ChatPageContent() {
     <div className="flex flex-col items-center justify-between min-h-screen bg-slate-50 relative overflow-hidden pb-20 px-6"
          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 40px)' }}>
       <div className="absolute top-0 w-full opacity-100 pointer-events-none z-0" style={{ height: '35vh' }}>
-        <Image src="/fondo_chat.jpg" alt="Zhi Background" fill className="object-cover object-top" priority />
+        <Image src="/fondo_chat.jpg" alt="Zhi Background" fill sizes="100vw" className="object-cover object-top" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/50 to-slate-50" />
       </div>
       
@@ -135,13 +180,16 @@ function ChatPageContent() {
         <p className="text-slate-500 font-medium mb-12">¿Cómo prefieres interactuar hoy?</p>
 
         <div className="grid grid-cols-2 gap-4 w-full mb-12">
-          <div className="h-32 flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-2xl shadow-sm opacity-60">
+          <button 
+            disabled
+            className="h-32 flex flex-col items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm opacity-70 cursor-not-allowed relative overflow-hidden transition-all"
+          >
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                 <Mic className="w-6 h-6" />
             </div>
-            <span className="font-semibold text-slate-400">Modo Voz</span>
-            <span className="text-[9px] font-bold tracking-wider uppercase text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Próximamente · Premium</span>
-          </div>
+            <span className="font-semibold text-slate-500">Modo Voz</span>
+            <span className="text-[9px] font-bold tracking-wider uppercase text-slate-600 bg-slate-200 px-2.5 py-0.5 rounded-full shadow-sm">Próximamente</span>
+          </button>
 
           <Button 
             onClick={() => setMode('text')}
@@ -173,7 +221,7 @@ function ChatPageContent() {
 // ---------------------------------------------------------
 function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialMessages, searchParams }: { onBack: () => void, user: any, userProfileData?: any, longTermHistory?: string, initialMessages?: {role:'user'|'zhi', text:string}[], searchParams: any }) {
   const defaultWelcome = { role: 'zhi' as const, text: "Hola... estoy aquí contigo. Toma un respiro profundo... Lo que compartes aquí es tuyo y se mantiene en privado. Si necesitas desahogarte... te escucho, sin juzgar." };
-  const [messages, setMessages] = useState<{role: 'user'|'zhi', text: string}[]>(
+  const [messages, setMessages] = useState<{role: 'user'|'zhi', text: string, isPremiumUpsell?: boolean}[]>(
     initialMessages && initialMessages.length > 0 ? initialMessages : [defaultWelcome]
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -291,7 +339,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
   }, []);
 
   // Function to save/update the conversation in Firestore
-  const saveConversationProgress = async (currentMessages: {role: 'user'|'zhi', text: string}[]) => {
+  const saveConversationProgress = async (currentMessages: {role: 'user'|'zhi', text: string, isPremiumUpsell?: boolean}[]) => {
     if (!user?.uid) return null;
     
     try {
@@ -348,6 +396,19 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
     if (!input.trim() || isLoading) return;
     const userMessage = input.trim();
     
+    const todayString = new Date().toISOString().split('T')[0];
+    const isPremium = userProfileDataRef.current?.isPremium;
+    let sentToday = userProfileDataRef.current?.messagesSentToday || 0;
+    const lastDate = userProfileDataRef.current?.lastMessageDate;
+    
+    if (lastDate !== todayString) {
+        sentToday = 0;
+    }
+
+    if (!isPremium && sentToday >= 3) {
+       return;
+    }
+    
     const newMessages = [...messages, { role: 'user' as const, text: userMessage }];
     setMessages(newMessages);
     setInput('');
@@ -362,9 +423,9 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
     try {
       const rawPayload = {
         userInput: userMessage,
-        userProfile: userProfileData ? { name: user?.displayName || '', ...userProfileData } : { name: user?.displayName || '' },
+        userProfile: userProfileDataRef.current ? { name: user?.displayName || '', ...userProfileDataRef.current } : { name: user?.displayName || '' },
         chatHistorySummary: fullHistory,
-        coreInsights: userProfileData?.coreInsights || []
+        coreInsights: userProfileDataRef.current?.coreInsights || []
       };
 
       let zhiText: string;
@@ -386,7 +447,33 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
         zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?";
       }
 
-      const finalMessages = [...newMessages, { role: 'zhi' as const, text: zhiText }];
+      sentToday += 1;
+      if (user?.uid) {
+         updateDoc(doc(db, 'users', user.uid), {
+             messagesSentToday: sentToday,
+             lastMessageDate: todayString
+         }).catch(console.error);
+      }
+      
+      if (userProfileDataRef.current) {
+          userProfileDataRef.current.messagesSentToday = sentToday;
+          userProfileDataRef.current.lastMessageDate = todayString;
+      }
+
+      const finalMessages: {role: 'user'|'zhi', text: string, isPremiumUpsell?: boolean}[] = [...newMessages, { role: 'zhi' as const, text: zhiText }];
+      
+      if (!isPremium && sentToday >= 3) {
+          finalMessages.push({ 
+              role: 'zhi' as const, 
+              text: "¿Quieres contarme qué pasó o qué te hizo sentir así?" 
+          });
+          finalMessages.push({ 
+              role: 'zhi' as const, 
+              text: "Puedes pausar aquí si lo necesitas.\n\nEste espacio sigue disponible para ti.\n\nSi deseas continuar ahora, puedes abrir acceso completo.", 
+              isPremiumUpsell: true 
+          });
+      }
+
       setMessages(finalMessages);
       // Eagerly save AI's response
       const savedId = await saveConversationProgress(finalMessages);
@@ -402,13 +489,17 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
 
     } catch (error) {
       console.error('[CHAT-TEXT] Error:', error);
-      const fallbackMessages = [...newMessages, { role: 'zhi' as const, text: "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?" }];
+      const fallbackMessages: {role: 'user'|'zhi', text: string}[] = [...newMessages, { role: 'zhi' as const, text: "Lo siento, tuve un problema de conexión. ¿Podemos intentarlo de nuevo?" }];
       setMessages(fallbackMessages);
       await saveConversationProgress(fallbackMessages);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const isPremiumUser = userProfileData?.isPremium;
+  const sentToday = userProfileData?.lastMessageDate === new Date().toISOString().split('T')[0] ? (userProfileData?.messagesSentToday || 0) : 0;
+  const reachedLimit = !isPremiumUser && sentToday >= 3;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50">
@@ -431,16 +522,56 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, idx) => (
+        {messages.map((msg, idx) => {
+          if (msg.isPremiumUpsell && userProfileData?.isPremium) return null;
+          return (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'zhi' && (
+            {msg.role === 'zhi' && !msg.isPremiumUpsell && (
               <Avatar className="w-8 h-8 mr-2 mt-1 shrink-0 border border-slate-100 shadow-sm bg-white p-1">
                  <AvatarImage src="/icon_zhi.png" className="object-contain" />
               </Avatar>
             )}
-            <div className={`max-w-[75%] rounded-2xl p-3 shadow-sm text-[16px] leading-relaxed whitespace-pre-line ${msg.role === 'user' ? 'bg-[#4EF2C8] text-slate-900 rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100 font-display'}`}>
-              {msg.text}
-            </div>
+            {msg.role === 'zhi' && msg.isPremiumUpsell && (
+              <div className="w-8 mr-2 shrink-0"></div>
+            )}
+            
+            {msg.isPremiumUpsell ? (
+              <div className="max-w-[85%] rounded-3xl p-5 shadow-sm bg-slate-50 transition-all border border-slate-200 text-slate-800 mt-4 mb-2 w-full mx-auto relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-3 relative z-10">
+                  <span className="font-semibold text-slate-700 text-[15px]">Zhi continúa contigo</span>
+                </div>
+                <p className="text-[15px] text-slate-600 leading-relaxed mb-6 whitespace-pre-line relative z-10">
+                  {msg.text}
+                </p>
+                <div className="flex flex-col gap-3 relative z-10">
+                  <Button onClick={() => window.location.href = '/premium'} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium h-11 rounded-xl">
+                    Abrir acceso completo
+                  </Button>
+                  <Button variant="ghost" onClick={handleBack} className="w-full text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 font-medium h-11 rounded-xl">
+                    Volver más tarde
+                  </Button>
+                </div>
+                <p className="text-[11px] text-slate-400 text-center mt-4 mb-1 relative z-10 tracking-wide">
+                  No tienes que decidir ahora.
+                </p>
+              </div>
+            ) : (
+              <div className={`max-w-[75%] rounded-2xl p-3 shadow-sm text-[16px] leading-relaxed whitespace-pre-line ${msg.role === 'user' ? 'bg-[#4EF2C8] text-slate-900 rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100 font-display'}`}>
+                {msg.text}
+                {msg.role === 'zhi' && userProfileData?.isPremium && !msg.isPremiumUpsell && (
+                  <div className="mt-2 flex justify-end">
+                    <button 
+                      onClick={() => speakTextWithTTS(msg.text)}
+                      className="flex items-center gap-1.5 text-xs text-[#25b591] font-medium hover:bg-[#4EF2C8]/10 px-2.5 py-1.5 rounded-full transition-colors active:scale-95"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      Escuchar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {msg.role === 'user' && (
               <Avatar className="w-8 h-8 ml-2 mt-1 shrink-0 border border-slate-100 shadow-sm">
                  <AvatarImage src={user?.photoURL || ""} />
@@ -448,7 +579,8 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
               </Avatar>
             )}
           </div>
-        ))}
+          );
+        })}
          <div ref={messagesEndRef} />
          {isLoading && (
           <div className="flex justify-start">
@@ -499,13 +631,14 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Escribe tu mensaje..."
-            className="flex-1 border border-slate-200 shadow-inner rounded-full px-5 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-[#4EF2C8]/50 focus:border-[#4EF2C8] bg-slate-50 text-slate-800 pr-14"
+            placeholder={reachedLimit ? "Límite gratuito alcanzado hoy" : "Escribe tu mensaje..."}
+            disabled={isLoading || reachedLimit}
+            className="flex-1 border border-slate-200 shadow-inner rounded-full px-5 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-[#4EF2C8]/50 focus:border-[#4EF2C8] bg-slate-50 text-slate-800 pr-14 disabled:opacity-50"
           />
           <Button 
             onClick={handleSend} 
-            disabled={isLoading || !input.trim()} 
-            className="absolute right-1 top-1 rounded-full w-10 h-10 p-0 flex-shrink-0 bg-slate-800 hover:bg-slate-700 shadow-md transition-transform active:scale-95 z-10"
+            disabled={isLoading || !input.trim() || reachedLimit} 
+            className="absolute right-1 top-1 rounded-full w-10 h-10 p-0 flex-shrink-0 bg-slate-800 hover:bg-slate-700 shadow-md transition-transform active:scale-95 z-10 disabled:opacity-50"
           >
             <Send className="w-4 h-4 text-white" />
           </Button>
@@ -525,7 +658,6 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
   const [zhiResponse, setZhiResponse] = useState('');
   const [messages, setMessages] = useState<{role: 'user'|'zhi', text: string}[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const { speak } = useSpeech();
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -656,12 +788,13 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
-    recognition.interimResults = false;
-    recognition.continuous = false; 
+    recognition.interimResults = true;
+    recognition.continuous = true; 
     
     setRecognitionInstance(recognition);
 
     recognition.onstart = () => {
+      console.log("[CHAT-VOICE] Web Speech API Listening started");
       setIsListening(true);
       setTranscript('');
       setZhiResponse('');
@@ -670,25 +803,59 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
       }
     };
 
-    recognition.onresult = async (event: any) => {
-      const text = event.results[0][0].transcript;
-      setTranscript(text);
-      setIsListening(false);
-      processVoiceInput(text);
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      // We use functional state update to append to any existing transcript 
+      // since the session started, because earlier results might be 'final' and overwritten in 'event.results' sometimes, 
+      // but usually continuous=true keeps them all.
+      let fullTranscript = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        fullTranscript += event.results[i][0].transcript;
+      }
+      
+      setTranscript(fullTranscript);
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
+      if (event.error !== 'no-speech' && event.error !== 'network') {
+        console.error("[CHAT-VOICE] Speech recognition error:", event.error);
+      } else {
+        console.log(`[CHAT-VOICE] Speech recognition stopped (${event.error}).`);
+      }
       setIsListening(false);
     };
 
     recognition.onend = () => {
+      console.log("[CHAT-VOICE] Web Speech API Listening ended");
       setIsListening(false);
+      
+      // Get the latest transcript state by using a setState updater function 
+      // or simply rely on the latest state if it matches, but since onend might have a stale closure, we can't reliably read 'transcript' state directly.
+      // Easiest fix: use a document query or state hook update trick
+      setTranscript((currentTranscript) => {
+         if (currentTranscript.trim()) {
+           processVoiceInput(currentTranscript.trim());
+         }
+         return currentTranscript; // Keep it on screen while processing
+      });
     };
 
     try {
+      console.log("[CHAT-VOICE] Attempting to start Web Speech API...");
       recognition.start();
-    } catch(e) { }
+    } catch(e) {
+      console.error("[CHAT-VOICE] Failed to start Web Speech API", e);
+    }
   };
 
   const processVoiceInput = async (text: string) => {
@@ -731,7 +898,7 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
       const finalMessages = [...newMessages, { role: 'zhi' as const, text: zhiText }];
       setMessages(finalMessages);
       const savedId = await saveConversationProgress(finalMessages);
-      speak(zhiText);
+      // Removed auto-play: speak(zhiText);
 
       // Eagerly generate title after first voice exchange
       if (savedId && !titleGeneratedRef.current && user?.uid) {
@@ -744,7 +911,7 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
       const fallbackMessages = [...newMessages, { role: 'zhi' as const, text: fallbackMsg }];
       setMessages(fallbackMessages);
       await saveConversationProgress(fallbackMessages);
-      speak(fallbackMsg);
+      // Removed auto-play: speak(fallbackMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -784,7 +951,21 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
             
             <div className="mb-12 h-32 overflow-y-auto w-full max-w-md flex flex-col justify-end items-center">
                {transcript && <p className="text-slate-400 italic text-sm mb-4">"{transcript}"</p>}
-               {zhiResponse && <p className="text-white font-medium text-lg leading-relaxed whitespace-pre-line">{zhiResponse}</p>}
+               {transcript && <p className="text-slate-400 italic text-sm mb-4">"{transcript}"</p>}
+               {zhiResponse && (
+                  <div className="flex flex-col items-center">
+                    <p className="text-white font-medium text-lg leading-relaxed whitespace-pre-line">{zhiResponse}</p>
+                    {userProfileData?.isPremium && (
+                      <button 
+                        onClick={() => speakTextWithTTS(zhiResponse)}
+                        className="mt-4 flex items-center gap-2 text-sm text-[#4EF2C8] font-bold bg-[#4EF2C8]/10 hover:bg-[#4EF2C8]/20 px-4 py-2 rounded-full transition-colors active:scale-95"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                        Escuchar Respuesta
+                      </button>
+                    )}
+                  </div>
+               )}
                {!transcript && !zhiResponse && <p className="text-slate-500 font-medium opacity-50">Zhi está lista para escucharte.</p>}
             </div>
 
@@ -797,7 +978,7 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
                  <div className="absolute inset-0 rounded-full bg-[#4EF2C8] animate-ping opacity-20"></div>
                )}
                 <div className="w-24 h-24 rounded-full bg-white shadow-lg overflow-hidden relative flex items-center justify-center border-4 border-[#4EF2C8]/10">
-                    <Image src="/icon_zhi.png" alt="Zhi Listening" fill className="p-3 object-contain" />
+                    <Image src="/icon_zhi.png" alt="Zhi Listening" fill sizes="100px" className="p-3 object-contain" />
                 </div>
             </button>
             

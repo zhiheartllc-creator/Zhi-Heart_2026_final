@@ -1,9 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Global admin access
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Requests Collection
+    match /requests/{requestId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.psychologistId == request.auth.uid
+      );
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Solo permite leer perfiles ajenos si se es Admin. 
+      // Si se necesita un directorio público, se deberían separar los campos públicos de los privados.
+      // Por ahora, permitimos leer solo el documento propio o ser Admin.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
+      // Impedir que el usuario cambie su propio 'role' o 'isPremium' (si se gestiona por acá)
+      allow write: if request.auth != null && request.auth.uid == userId 
+                   && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      
+      // Chat History subcollection
+      match /chatHistory/{chatId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && resource.data.sharedWithTherapist == true;
+      }
+      
+      // All other subcollections (like privateNotes)
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }

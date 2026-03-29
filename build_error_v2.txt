@@ -1,0 +1,10 @@
+
+> zhi-heart-2026@0.1.0 build:static
+> npm run clean:sw && (if exist src\app\api move src\app\api src\api_backup) && (if exist src\middleware.ts move src\middleware.ts src\middleware.ts.bak) && next build && (if exist src\api_backup move src\api_backup src\app\api) && (if exist src\middleware.ts.bak move src\middleware.ts src\middleware.ts)
+
+
+> zhi-heart-2026@0.1.0 clean:sw
+> node -e "const fs=require('fs'); ['public/sw.js','out/sw.js'].forEach(f=>{try{fs.unlinkSync(f);console.log('Deleted',f)}catch(e){}})"
+
+Acceso denegado.
+Se ha(n) movido         0 directorio(s).

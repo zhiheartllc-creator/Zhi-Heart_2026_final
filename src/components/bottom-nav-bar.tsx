@@ -5,19 +5,33 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, MessageSquare, HeartHandshake, History, Menu, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export function BottomNavBar({ forceShow }: { forceShow?: boolean } = {}) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, userProfile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [isViewingAsUser, setIsViewingAsUser] = useState(false);
+
+  // Comprobar si un admin está modo usuario
+  useEffect(() => {
+     if (typeof window !== 'undefined') {
+        const flag = sessionStorage.getItem('adminViewingUser') === 'true';
+        if (isViewingAsUser !== flag) setIsViewingAsUser(flag);
+     }
+  }, [isViewingAsUser]);
 
   // No mostrar la barra de navegación si el usuario no ha iniciado sesión 
   // o si está en la landing page, login, signup o chat (donde la barra quita espacio útil)
-  if (!user || (!forceShow && (pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname === '/chat'))) {
+  if (!user || (!forceShow && (!pathname || pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname === '/chat' || pathname?.startsWith('/psychologist') || pathname?.startsWith('/admin')))) {
     return null;
+  }
+  
+  if ((userProfile?.role === 'psychologist' || userProfile?.role === 'admin') && !isViewingAsUser) {
+    return null; // Profesionales o administradores tienen su propia navegación
   }
 
   const navItems = [
@@ -56,6 +70,11 @@ export function BottomNavBar({ forceShow }: { forceShow?: boolean } = {}) {
                        <DialogTitle className="text-center text-lg font-bold text-slate-800">Menú</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col py-2">
+                       <Link href="/messages" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                          <MessageSquare className="w-5 h-5 text-[#25b591]" />
+                          <span className="font-semibold text-[#1e3a5f]">Mensajes Especiales</span>
+                       </Link>
+                       <div className="h-[1px] bg-slate-100 w-[85%] mx-auto my-1" />
                        <Link href="/settings" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
                           <User className="w-5 h-5 text-slate-800" />
                           <span className="font-semibold text-slate-700">Mi Perfil</span>

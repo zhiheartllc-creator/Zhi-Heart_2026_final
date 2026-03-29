@@ -88,6 +88,14 @@
           }
         },
         {
+          "client_id": "535312456048-gbccb9bbg2jib6k4rkdenn63ahu774qk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.zhi.heart",
+            "certificate_hash": "b4ef1b0e71c23c8fff882ac3f07978a3d6563ef7"
+          }
+        },
+        {
           "client_id": "535312456048-qc2qj7jjplrt3dsim0t5iavp40mubgge.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

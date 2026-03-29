@@ -93,7 +93,7 @@ export async function cancelMoodReminders(): Promise<void> {
 
 /**
  * Programa recordatorios diarios:
- * - Mañana: 7:00 AM (hora local del dispositivo)
+ * - Mediodía: 12:00 PM (hora local del dispositivo)
  * - Tarde: 5:00 PM (hora local del dispositivo)
  *
  * IMPORTANTE: Usamos `at` con un Date concreto en vez de `on: { hour, minute }`
@@ -112,31 +112,31 @@ export async function scheduleMoodReminders(): Promise<boolean> {
       // Cancelamos los anteriores primero para evitar duplicados
       await LN.cancel({ notifications: [{ id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }] });
 
-      // Calculamos la próxima 7:00 AM hora LOCAL del dispositivo
-      const nextMorning = new Date();
-      nextMorning.setHours(7, 0, 0, 0);
-      if (nextMorning <= new Date()) {
-        nextMorning.setDate(nextMorning.getDate() + 1); // Si ya pasó, mañana
+      // Calculamos la próxima tarde (6:00 PM) hora LOCAL del dispositivo
+      const nextAfternoon = new Date();
+      nextAfternoon.setHours(18, 0, 0, 0);
+      if (nextAfternoon <= new Date()) {
+        nextAfternoon.setDate(nextAfternoon.getDate() + 1); // Si ya pasó, mañana
       }
 
-      // Calculamos la próxima 5:00 PM hora LOCAL del dispositivo
-      const nextEvening = new Date();
-      nextEvening.setHours(17, 0, 0, 0);
-      if (nextEvening <= new Date()) {
-        nextEvening.setDate(nextEvening.getDate() + 1); // Si ya pasó, mañana
+      // Calculamos la próxima noche (9:00 PM) hora LOCAL del dispositivo
+      const nextNight = new Date();
+      nextNight.setHours(21, 0, 0, 0);
+      if (nextNight <= new Date()) {
+        nextNight.setDate(nextNight.getDate() + 1); // Si ya pasó, mañana
       }
 
-      console.log('[NOTIF] Programando: mañana =', nextMorning.toLocaleString(), '| tarde =', nextEvening.toLocaleString());
+      console.log('[NOTIF] Programando: tarde =', nextAfternoon.toLocaleString(), '| noche =', nextNight.toLocaleString());
 
       await LN.schedule({
         notifications: [
           {
             id: MORNING_NOTIF_ID,
-            title: '🌅 Buenos días, ¿cómo amaneciste?',
-            body: 'Registra cómo te sientes este momento. Tu bienestar importa.',
+            title: '🌅 Buenas tardes, ¿cómo va tu día?',
+            body: 'Tómate un descanso y registra cómo te sientes en este momento.',
             iconColor: '#4EF2C8',
             schedule: {
-              at: nextMorning,
+              at: nextAfternoon,
               every: 'day',
               allowWhileIdle: true,
             },
@@ -145,11 +145,11 @@ export async function scheduleMoodReminders(): Promise<boolean> {
           },
           {
             id: EVENING_NOTIF_ID,
-            title: '🌙 Pausa emocional de la tarde',
-            body: '¿Cómo te fue hoy? Tómate un momento para registrarlo con Zhi.',
+            title: '🌙 Reflexión de la noche',
+            body: 'El día termina. Tómate un momento final para registrar tu estado.',
             iconColor: '#4EF2C8',
             schedule: {
-              at: nextEvening,
+              at: nextNight,
               every: 'day',
               allowWhileIdle: true,
             },
@@ -159,7 +159,7 @@ export async function scheduleMoodReminders(): Promise<boolean> {
         ],
       });
 
-      console.log('[NOTIF] Recordatorios programados: 7:00 AM y 5:00 PM hora local diario ✅');
+      console.log('[NOTIF] Recordatorios programados: 6:00 PM y 9:00 PM hora local diario ✅');
       localStorage.setItem('zhi_notifications_enabled', 'true');
       return true;
     } catch (e) {

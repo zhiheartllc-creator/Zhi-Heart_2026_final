@@ -4,6 +4,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { NotificationManager } from "@/components/NotificationManager";
+import { RoleGuard } from "@/components/role-guard";
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || Date.now().toString();
 
@@ -23,7 +24,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     };
     initUpdater();
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_IS_STATIC === 'true') {
       if (navigator.serviceWorker) {
         navigator.serviceWorker.getRegistrations().then((regs) => {
           regs.forEach((reg) => {
@@ -34,6 +35,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       if ('caches' in window) {
         caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => console.log('[SW] caches cleared')).catch(() => {});
       }
+      // Detenemos la lógica de Service Workers para Android nativo (Static Export)
       return;
     }
 
@@ -66,7 +68,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthProvider>
-      {children}
+      <RoleGuard>
+        {children}
+      </RoleGuard>
       <Toaster />
       <NotificationManager />
     </AuthProvider>

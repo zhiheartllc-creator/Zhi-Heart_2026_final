@@ -1,0 +1,14 @@
+﻿
+> zhi-heart-2026@0.1.0 build:android
+> npm run clean:sw && (if exist src\app\api move src\app\api src\api_backup) && (if exist src\middleware.ts move src\middleware.ts src\middleware.ts.bak) && cross-env NEXT_OUTPUT=export NEXT_PUBLIC_API_BASE_URL=https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app NEXT_PUBLIC_GEMINI_API_KEY=AIzaSyB5jbl8tGphw0-yeHyx9uKHGbGGOJlgSSc next build && (if exist src\api_backup move src\api_backup src\app\api) && (if exist src\middleware.ts.bak move src\middleware.ts src\middleware.ts)
+
+
+> zhi-heart-2026@0.1.0 clean:sw
+> node -e "const fs=require('fs'); ['public/sw.js','out/sw.js'].forEach(f=>{try{fs.unlinkSync(f);console.log('Deleted',f)}catch(e){}})"
+
+   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ Ôùï (serwist) Serwist is disabled.
+ Ôùï (serwist) Serwist is disabled.

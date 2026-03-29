@@ -7,11 +7,12 @@ import { zhiChat } from '@/ai/flows/zhi-chat-flow';
 
 // Headers CORS necesarios para que Android (Capacitor) pueda llamar a esta API.
 // Capacitor usa el origen "capacitor://localhost" o "http://localhost" en Android.
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+// Headers CORS restringidos para producción y desarrollo local Capacitor.
+const allowedOrigins = [
+  'https://zhi-heart--main-studio-2141942949-c8e1e.us-central1.hosted.app',
+  'capacitor://localhost',
+  'http://localhost'
+];
 
 // Responde al preflight OPTIONS que el navegador/Capacitor envía antes del POST
 export async function OPTIONS() {
@@ -19,15 +20,25 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: Request) {
+  const origin = req.headers.get('origin');
+  const headers = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+  };
   try {
     const body = await req.json();
     const result = await zhiChat(body);
-    return NextResponse.json(result, { headers: corsHeaders });
+    return NextResponse.json(result, { headers });
   } catch (error: any) {
     console.error("Route Handler Chat Error:", error);
     return NextResponse.json(
       { zhiHeartResponse: "Te escucho... entiendo que puede ser difícil... tómate tu tiempo, no hay prisa... estoy aquí para acompañarte." },
-      { headers: corsHeaders }
+      { headers }
     );
   }
 }
+
+const corsHeaders = {
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};

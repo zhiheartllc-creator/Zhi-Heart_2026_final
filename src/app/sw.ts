@@ -26,7 +26,6 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: filteredCache,
-  cleanupOutdatedCaches: true,
 });
 
 self.addEventListener('activate', (event) => {

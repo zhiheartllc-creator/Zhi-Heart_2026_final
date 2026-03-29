@@ -1,0 +1,91 @@
+﻿
+> zhi-heart-2026@0.1.0 build:static
+> npm run clean:sw && (if exist src\app\api move src\app\api src\api_backup) && (if exist src\middleware.ts move src\middleware.ts src\middleware.ts.bak) && next build && (if exist src\api_backup move src\api_backup src\app\api) && (if exist src\middleware.ts.bak move src\middleware.ts src\middleware.ts)
+
+
+> zhi-heart-2026@0.1.0 clean:sw
+> node -e "const fs=require('fs'); ['public/sw.js','out/sw.js'].forEach(f=>{try{fs.unlinkSync(f);console.log('Deleted',f)}catch(e){}})"
+
+   Ôû▓ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ Ô£ô (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+node.exe : <w> [webpac
+k.cache.PackFileCacheS
+trategy] Caching 
+failed for pack: 
+Error: Unable to 
+snapshot resolve 
+dependencies
+En línea: 1 Carácter: 
+1
++ & "C:\Program Files\
+nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (<w> [webpa   
+ ck.ca...ve depend    
+encies:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+<w> [webpack.cache.Pac
+kFileCacheStrategy] 
+Caching failed for 
+pack: Error: Unable 
+to snapshot resolve 
+dependencies
+Failed to compile.
+
+./src/hooks/use-billin
+g.ts
+Module not found: 
+G:\Otros 
+ordenadores\Mi port├ít
+il\APP_yo\Zhi\Zhi-Hear
+t_2026_final\node_modu
+les\@revenuecat\purcha
+ses-capacitor\package.
+json (directory 
+description file): 
+G:\Otros 
+ordenadores\Mi port├ít
+il\APP_yo\Zhi\Zhi-Hear
+t_2026_final\node_modu
+les\@revenuecat\purcha
+ses-capacitor\package.
+json (directory 
+description file): 
+Error: G:\Otros 
+ordenadores\Mi port├ít
+il\APP_yo\Zhi\Zhi-Hear
+t_2026_final\node_modu
+les\@revenuecat\purcha
+ses-capacitor\package.
+json (directory 
+description file): 
+Error: No file content
+
+https://nextjs.org/doc
+s/messages/module-not-
+found
+
+Import trace for 
+requested module:
+./src/app/premium/page
+.tsx
+
+
+> Build failed 
+because of webpack 
+errors

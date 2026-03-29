@@ -1,0 +1,41 @@
+
+> zhi-heart-2026@0.1.0 build:static
+> node scripts/build-manager.js pre && next build && node scripts/build-manager.js post
+
+Deleted public/sw.js
+Error moving src/app/api: EPERM: operation not permitted, rename 'C:\Zhi-Heart_2026_final\src\app\api' -> 'C:\Zhi-Heart_2026_final\src\api_backup'
+   ▲ Next.js 15.1.9
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ ✓ (serwist) Bundling the service worker script with the URL '/sw.js' and the scope '/'...
+ ⚠ Compiled with warnings
+
+./src/hooks/use-billing.ts
+Module not found: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: No file content
+
+Import trace for requested module:
+./src/hooks/use-billing.ts
+./src/app/premium/page.tsx
+
+./src/hooks/use-billing.ts
+Module not found: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: C:\Zhi-Heart_2026_final\node_modules\@revenuecat\purchases-capacitor\package.json (directory description file): Error: No file content
+
+Import trace for requested module:
+./src/hooks/use-billing.ts
+./src/app/premium/page.tsx
+
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+Error: export const dynamic = "force-static"/export const revalidate not configured on route "/api/test-zhi" with "output: export". See more info here: https://nextjs.org/docs/advanced-features/static-html-export
+    at 35865 (C:\Zhi-Heart_2026_final\.next\server\app\api\test-zhi\route.js:1:3147)
+    at t (C:\Zhi-Heart_2026_final\.next\server\webpack-runtime.js:1:143)
+    at t (C:\Zhi-Heart_2026_final\.next\server\app\api\test-zhi\route.js:1:3668)
+    at <unknown> (C:\Zhi-Heart_2026_final\.next\server\app\api\test-zhi\route.js:1:3700)
+    at t.X (C:\Zhi-Heart_2026_final\.next\server\webpack-runtime.js:1:1285)
+    at <unknown> (C:\Zhi-Heart_2026_final\.next\server\app\api\test-zhi\route.js:1:3681)
+    at Object.<anonymous> (C:\Zhi-Heart_2026_final\.next\server\app\api\test-zhi\route.js:1:3728)
+
+> Build error occurred
+[Error: Failed to collect page data for /api/test-zhi] { type: 'Error' }

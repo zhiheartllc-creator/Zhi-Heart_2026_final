@@ -1,14 +1,13 @@
-'use client';
+// No 'use client' here — this module is imported during static build.
+// All browser-only calls are guarded at runtime.
 
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, linkWithPopup, updateProfile, type User, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, serverTimestamp, deleteDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, updateDoc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-// ⚠️ NOTA DE RUTA: Asegúrate de que las carpetas "@/firebase/error-emitter" y "@/firebase/errors" existan, 
-// o cambia la ruta a "@/lib/..." si guardaste esos archivos allí.
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+// firebase/messaging is lazy-loaded to avoid crashing during SSR/static export prerender
 
 // ---------------------------------------------------------------------------
 // 1. CONFIGURACIÓN PRINCIPAL DE FIREBASE
@@ -32,20 +31,32 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // 2. CONFIGURACIÓN DE BASE DE DATOS (Con soporte Offline Multipesataña)
 // ---------------------------------------------------------------------------
 let db: any;
-try {
-  // Intentamos activar la caché local persistente con soporte multi-pestaña. 
-  // Esto permite que el usuario lea y escriba en el diario aunque no tenga internet,
-  // y previene el error 'failed-precondition' cuando abre la app en varias pestañas.
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
-} catch (error: any) {
-  console.error("Firebase persistence error", error);
-  // Si el navegador no soporta caché (ej. modo incógnito estricto), 
-  // usamos la base de datos estándar en memoria.
-  db = getFirestore(app); 
+
+if (typeof window !== 'undefined') {
+  try {
+    // En desarrollo (HMR de Next.js), las recargas constantes generan colisiones con IndexedDB (Failed to obtain primary lease).
+    // Por lo tanto, solo activamos la persistencia offline en producción (o en la app nativa compilada).
+    if (process.env.NODE_ENV === 'development') {
+      db = getFirestore(app);
+    } else {
+      // Intentamos activar la caché local persistente con soporte multi-pestaña en producción. 
+      // Esto permite que el usuario lea y escriba en el diario aunque no tenga internet.
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+    }
+  } catch (error: any) {
+    console.error("Firebase persistence error", error);
+    // Si el navegador no soporta caché (ej. modo incógnito estricto), 
+    // usamos la base de datos estándar en memoria.
+    db = getFirestore(app); 
+  }
+} else {
+  // Fallback para SSR/build: usamos Firestore estándar sin persistencia.
+  // Esto evita errores de IndexedDB en el servidor.
+  db = getFirestore(app);
 }
 
 // ---------------------------------------------------------------------------
@@ -55,9 +66,13 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
-// El mensajero (Push Notifications) solo funciona en el cliente (navegador).
-// Comprobamos que 'window' exista para que Next.js no falle al compilar en el servidor.
-const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+// firebase/messaging is lazy-loaded — never imported at module level to avoid SSR crashes.
+// Use getFirebaseMessaging() below wherever you need it.
+const getFirebaseMessaging = async () => {
+  if (typeof window === 'undefined') return null;
+  const { getMessaging } = await import('firebase/messaging');
+  return getMessaging(app);
+};
 
 // ---------------------------------------------------------------------------
 // 4. FUNCIONES DE GESTIÓN DE USUARIOS
@@ -332,9 +347,7 @@ export {
   auth,
   db,
   storage,
-  messaging,
-  getToken,
-  onMessage,
+  getFirebaseMessaging,
   googleProvider,
   createUserProfileDocument,
   signInWithGoogle,

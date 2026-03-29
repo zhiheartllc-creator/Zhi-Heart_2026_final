@@ -251,7 +251,7 @@ export default function SignupWizard() {
 
       {/* Zhi Logo */}
       <div className="mb-8 z-10 flex flex-col items-center">
-        <Image src="https://i.imgur.com/SN7UgJ3.jpeg" alt="Zhi.io" width={64} height={64} className="rounded-2xl shadow-sm mb-3" />
+        <Image src="/icon_zhi.png" alt="Zhi.io" width={64} height={64} className="rounded-2xl shadow-sm mb-3" />
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Zhi</h1>
       </div>
 

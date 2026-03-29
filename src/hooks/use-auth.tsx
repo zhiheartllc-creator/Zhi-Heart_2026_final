@@ -12,6 +12,7 @@ interface AuthContextType {
   justSignedIn: boolean;
   signOut: () => Promise<void>;
   markJustSignedIn: () => void;
+  userProfile: any | null;
 }
 
 // Creamos el contexto con valores por defecto
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   justSignedIn: false,
   signOut: async () => {},
   markJustSignedIn: () => {},
+  userProfile: null,
 });
 
 // Este proveedor envolverá tu aplicación (lo usaremos en el layout)
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // justSignedIn: flag temporal que indica que un login acaba de ocurrir.
   // Esto previene que dashboard redirija a login antes de que onAuthStateChanged propague el usuario.
   const [justSignedIn, setJustSignedIn] = useState(false);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const justSignedInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const markJustSignedIn = useCallback(() => {
@@ -64,6 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[USE-AUTH] onAuthStateChanged -> currentUser:', currentUser?.email || 'null');
       setUser(currentUser);
       setLoading(false);
+      // Fetch user profile from Firestore to get `role` and other details
+      if (currentUser) {
+         import('firebase/firestore').then(({ doc, getDoc }) => {
+            import('@/lib/firebase').then(({ db }) => {
+               getDoc(doc(db, 'users', currentUser.uid)).then((document) => {
+                  if (document.exists()) {
+                     const data = document.data();
+                     
+                     setUserProfile(data);
+                  }
+               }).catch(console.error);
+            }).catch(console.error);
+         }).catch(console.error);
+      } else {
+         setUserProfile(null);
+      }
+
       // Si detectamos un usuario después de un login reciente, limpiamos el flag
       if (currentUser && justSignedInTimerRef.current) {
         console.log('[USE-AUTH] User detected after sign-in, clearing justSignedIn flag');
@@ -82,10 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    setUserProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, initializing, justSignedIn, signOut, markJustSignedIn }}>
+    <AuthContext.Provider value={{ user, loading, initializing, justSignedIn, signOut, markJustSignedIn, userProfile }}>
       {children}
     </AuthContext.Provider>
   );

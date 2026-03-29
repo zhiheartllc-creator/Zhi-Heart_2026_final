@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, User, Mail, MapPin, Palette, LogOut, ChevronDown, Bell, Shield, Users } from 'lucide-react';
+import { Camera, User, Mail, MapPin, Palette, LogOut, ChevronDown, Bell, Shield, Users, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -17,9 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useSpeech } from '@/hooks/use-speech';
 import { scheduleMoodReminders, cancelMoodReminders } from '@/lib/notifications';
+import { BottomNavBar } from '@/components/bottom-nav-bar';
 
 export default function SettingsPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, userProfile, loading, signOut } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('');
   const [dailyReminders, setDailyReminders] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   const { isMuted, toggleMute } = useSpeech();
@@ -45,6 +47,7 @@ export default function SettingsPage() {
           const data = docSnap.data();
           if (data.country) setCountry(data.country);
           if (data.dailyReminders !== undefined) setDailyReminders(data.dailyReminders);
+          setIsPremium(data.isPremium || false);
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -154,7 +157,7 @@ export default function SettingsPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-50 to-transparent" />
         
         {/* Avatar Overlay */}
-        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-10">
+        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
           <div className="relative">
             <Avatar className="h-28 w-28 border-4 border-white shadow-xl">
               <AvatarImage src={user.photoURL || ""} alt={name} className="object-cover" />
@@ -162,15 +165,25 @@ export default function SettingsPage() {
                 {name ? name.charAt(0).toUpperCase() : <User />}
               </AvatarFallback>
             </Avatar>
-            <button className="absolute bottom-0 right-0 bg-slate-900 text-white p-2 rounded-full shadow-lg border-2 border-white hover:bg-slate-800 transition-colors">
+            <button className="absolute bottom-1 right-0 bg-slate-900 text-white p-2 rounded-full shadow-lg border-2 border-white hover:bg-slate-800 transition-colors">
               <Camera className="w-4 h-4" />
             </button>
           </div>
+          {isPremium ? (
+             <div className="mt-2 flex items-center justify-center gap-1 bg-[#4EF2C8]/10 text-[#25b591] px-3 py-1 rounded-full border border-[#4EF2C8]/30 shadow-sm backdrop-blur-sm">
+                 <ShieldCheck className="w-4 h-4" />
+                 <span className="text-xs font-bold tracking-wide">Zhi Premium</span>
+             </div>
+          ) : (
+             <button onClick={() => router.push('/premium')} className="mt-2 flex items-center justify-center gap-1 bg-white text-slate-500 px-3 py-1 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm hover:border-[#4EF2C8] hover:text-[#25b591] transition-colors">
+                 <span className="text-[10px] font-bold tracking-wide uppercase">Plan Gratuito</span>
+             </button>
+          )}
         </div>
       </div>
 
       {/* BODY CONTENT */}
-      <div className="px-4 sm:px-6 mt-16 max-w-2xl mx-auto w-full space-y-8 relative z-20">
+      <div className="px-4 sm:px-6 mt-20 max-w-2xl mx-auto w-full space-y-8 relative z-20">
         
         {/* Profile Form */}
         <section className="space-y-4">
@@ -254,8 +267,11 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-slate-500 -mt-3">Gestiona tu psicólogo asignado.</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">⚡ Modo de prueba</span>
-                <span className="text-[10px] font-bold tracking-wide uppercase text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Premium · Próximamente</span>
+                {isPremium ? (
+                  <span className="text-[10px] font-bold tracking-wide uppercase text-[#25b591] bg-[#4EF2C8]/10 border border-[#4EF2C8]/30 px-2.5 py-0.5 rounded-full">✨ Acceso Premium Total</span>
+                ) : (
+                  <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">🔒 Premium: Contacta a tu psicólogo</span>
+                )}
               </div>
 
               <div className="border border-slate-200 rounded-lg p-3 flex justify-between items-center bg-slate-50">
@@ -297,6 +313,19 @@ export default function SettingsPage() {
 
         {/* Guardar Cambios + Cerrar Sesión */}
         <section className="pt-4 pb-8 space-y-3">
+          {userProfile?.role === 'admin' && (
+            <Button 
+               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-6 rounded-2xl shadow-md transition-all mb-2"
+               onClick={() => {
+                  sessionStorage.removeItem('adminViewingUser');
+                  router.push('/admin/dashboard');
+               }}
+            >
+               <ShieldCheck className="w-5 h-5 mr-2" />
+               Volver al Panel de Administrador
+            </Button>
+          )}
+
           <Button 
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-6 rounded-2xl shadow-xl transition-all"
             onClick={handleSave}
@@ -314,6 +343,7 @@ export default function SettingsPage() {
 
       </div>
       
+      <BottomNavBar forceShow={true} />
     </div>
   );
 }

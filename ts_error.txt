@@ -1,0 +1,4 @@
+src/app/sw.ts(29,3): error TS2353: Object literal may only specify known properties, and 'cleanupOutdatedCaches' does not exist in type 'SerwistOptions'.
+src/hooks/use-billing.ts(11,36): error TS2307: Cannot find module '@revenuecat/purchases-capacitor' or its corresponding type declarations.
+src/hooks/use-billing.ts(18,36): error TS2307: Cannot find module '@revenuecat/purchases-capacitor' or its corresponding type declarations.
+src/hooks/use-billing.ts(79,10): error TS7006: Parameter 'p' implicitly has an 'any' type.

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "https://i.imgur.com/SN7UgJ3.jpeg",
+    icon: "/icon_zhi.png",
   }
 };
 
