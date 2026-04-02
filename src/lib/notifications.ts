@@ -12,8 +12,8 @@
  */
 
 // IDs fijos para poder cancelar/reprogramar sin duplicar
-const MORNING_NOTIF_ID = 1001;
-const EVENING_NOTIF_ID = 1002;
+const MORNING_NOTIF_ID = 2001; // Nueva serie para forzar reset
+const EVENING_NOTIF_ID = 2002;
 
 const isNativePlatform = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -82,7 +82,8 @@ export async function cancelMoodReminders(): Promise<void> {
   if (isNativePlatform()) {
     try {
       const LN = await getLocalNotifications();
-      await LN.cancel({ notifications: [{ id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }] });
+      // Cancelar específicos
+      await LN.cancel({ notifications: [{ id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }, { id: 1001 }, { id: 1002 }] });
       console.log('[NOTIF] Recordatorios cancelados');
     } catch (e) {
       console.error('[NOTIF] Error cancelling notifications:', e);
@@ -109,34 +110,34 @@ export async function scheduleMoodReminders(): Promise<boolean> {
     try {
       const LN = await getLocalNotifications();
 
-      // Cancelamos los anteriores primero para evitar duplicados
-      await LN.cancel({ notifications: [{ id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }] });
+      // Cancelamos los anteriores de ambas series para evitar duplicados
+      await LN.cancel({ notifications: [{ id: 1001 }, { id: 1002 }, { id: MORNING_NOTIF_ID }, { id: EVENING_NOTIF_ID }] });
 
-      // Calculamos la próxima tarde (6:00 PM) hora LOCAL del dispositivo
+      // Calculamos la próxima mañana (8:00 AM) hora LOCAL del dispositivo
+      const nextMorning = new Date();
+      nextMorning.setHours(8, 0, 0, 0);
+      if (nextMorning <= new Date()) {
+        nextMorning.setDate(nextMorning.getDate() + 1); // Si ya pasó hoy, mañana
+      }
+
+      // Calculamos la próxima tarde (7:00 PM / 19:00) hora LOCAL del dispositivo
       const nextAfternoon = new Date();
-      nextAfternoon.setHours(18, 0, 0, 0);
+      nextAfternoon.setHours(19, 0, 0, 0);
       if (nextAfternoon <= new Date()) {
-        nextAfternoon.setDate(nextAfternoon.getDate() + 1); // Si ya pasó, mañana
+        nextAfternoon.setDate(nextAfternoon.getDate() + 1); // Si ya pasó hoy, mañana
       }
 
-      // Calculamos la próxima noche (9:00 PM) hora LOCAL del dispositivo
-      const nextNight = new Date();
-      nextNight.setHours(21, 0, 0, 0);
-      if (nextNight <= new Date()) {
-        nextNight.setDate(nextNight.getDate() + 1); // Si ya pasó, mañana
-      }
-
-      console.log('[NOTIF] Programando: tarde =', nextAfternoon.toLocaleString(), '| noche =', nextNight.toLocaleString());
+      console.log('[NOTIF] Programando: mañana =', nextMorning.toLocaleString(), '| tarde =', nextAfternoon.toLocaleString());
 
       await LN.schedule({
         notifications: [
           {
             id: MORNING_NOTIF_ID,
-            title: '🌅 Buenas tardes, ¿cómo va tu día?',
-            body: 'Tómate un descanso y registra cómo te sientes en este momento.',
+            title: '🌿 ¿Cómo te sientes hoy?',
+            body: 'Tómate un momento para registrar tu ánimo en Zhi.io',
             iconColor: '#4EF2C8',
             schedule: {
-              at: nextAfternoon,
+              at: nextMorning,
               every: 'day',
               allowWhileIdle: true,
             },
@@ -149,7 +150,7 @@ export async function scheduleMoodReminders(): Promise<boolean> {
             body: 'El día termina. Tómate un momento final para registrar tu estado.',
             iconColor: '#4EF2C8',
             schedule: {
-              at: nextNight,
+              at: nextAfternoon,
               every: 'day',
               allowWhileIdle: true,
             },
@@ -159,7 +160,7 @@ export async function scheduleMoodReminders(): Promise<boolean> {
         ],
       });
 
-      console.log('[NOTIF] Recordatorios programados: 6:00 PM y 9:00 PM hora local diario ✅');
+      console.log('[NOTIF] Recordatorios programados: 8:00 AM y 7:00 PM hora local diario ✅');
       localStorage.setItem('zhi_notifications_enabled', 'true');
       return true;
     } catch (e) {

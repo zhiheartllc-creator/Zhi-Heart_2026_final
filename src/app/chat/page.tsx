@@ -47,6 +47,20 @@ const speakTextWithTTS = async (text: string, voiceIdOverride?: string) => {
   }
 };
 
+/**
+ * Returns a robust YYYY-MM-DD string in the user's local time,
+ * independent of the browser's locale-specific toLocaleDateString implementation.
+ */
+const getTodayDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const FREE_tier_LIMIT = 5;
+
 export default function ChatPage() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-slate-400">Cargando...</p></div>}>
@@ -76,7 +90,7 @@ function ChatPageContent() {
         const sanitizedData = JSON.parse(JSON.stringify(document.data()));
         setUserProfileData(sanitizedData);
         
-        const isPremium = sanitizedData.isPremium || false;
+        const isPremium = sanitizedData.premiumStatus === 'active' || sanitizedData.isPremium || false;
         
         if (!hasFetchedHistory.current) {
           hasFetchedHistory.current = true;
@@ -106,9 +120,7 @@ function ChatPageContent() {
         }
       }
     }, (err) => {
-      if (err.code !== 'permission-denied') {
-        console.error("Profile fetch error:", err);
-      }
+      console.error("[DEBUG-CHAT] Error fetching profile:", err);
     });
 
     return () => unsubscribe();
@@ -180,16 +192,17 @@ function ChatPageContent() {
         <p className="text-slate-500 font-medium mb-12">¿Cómo prefieres interactuar hoy?</p>
 
         <div className="grid grid-cols-2 gap-4 w-full mb-12">
-          <button 
+          <Button 
             disabled
-            className="h-32 flex flex-col items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm opacity-70 cursor-not-allowed relative overflow-hidden transition-all"
+            className="h-32 flex flex-col items-center justify-center gap-2 bg-slate-50/50 text-slate-400 border border-slate-200 shadow-none rounded-2xl cursor-not-allowed opacity-80"
+            variant="outline"
           >
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
                 <Mic className="w-6 h-6" />
             </div>
-            <span className="font-semibold text-slate-500">Modo Voz</span>
-            <span className="text-[9px] font-bold tracking-wider uppercase text-slate-600 bg-slate-200 px-2.5 py-0.5 rounded-full shadow-sm">Próximamente</span>
-          </button>
+            <span className="font-semibold text-slate-400">Modo Voz</span>
+            <span className="text-[9px] font-bold tracking-tight uppercase text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200/50">Próximamente disponible</span>
+          </Button>
 
           <Button 
             onClick={() => setMode('text')}
@@ -220,6 +233,7 @@ function ChatPageContent() {
 // TEXT CHAT MODE
 // ---------------------------------------------------------
 function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialMessages, searchParams }: { onBack: () => void, user: any, userProfileData?: any, longTermHistory?: string, initialMessages?: {role:'user'|'zhi', text:string}[], searchParams: any }) {
+  const router = useRouter();
   const defaultWelcome = { role: 'zhi' as const, text: "Hola... estoy aquí contigo. Toma un respiro profundo... Lo que compartes aquí es tuyo y se mantiene en privado. Si necesitas desahogarte... te escucho, sin juzgar." };
   const [messages, setMessages] = useState<{role: 'user'|'zhi', text: string, isPremiumUpsell?: boolean}[]>(
     initialMessages && initialMessages.length > 0 ? initialMessages : [defaultWelcome]
@@ -396,16 +410,18 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
     if (!input.trim() || isLoading) return;
     const userMessage = input.trim();
     
-    const todayString = new Date().toISOString().split('T')[0];
-    const isPremium = userProfileDataRef.current?.isPremium;
+    const todayString = getTodayDateString();
+    const isPremium = userProfileDataRef.current?.premiumStatus === 'active' || userProfileDataRef.current?.isPremium;
     let sentToday = userProfileDataRef.current?.messagesSentToday || 0;
     const lastDate = userProfileDataRef.current?.lastMessageDate;
     
+    // Reset if date changed
     if (lastDate !== todayString) {
         sentToday = 0;
     }
 
-    if (!isPremium && sentToday >= 3) {
+    if (!isPremium && sentToday >= FREE_tier_LIMIT) {
+       console.log("[CHAT] Free limit reached:", sentToday);
        return;
     }
     
@@ -462,7 +478,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
 
       const finalMessages: {role: 'user'|'zhi', text: string, isPremiumUpsell?: boolean}[] = [...newMessages, { role: 'zhi' as const, text: zhiText }];
       
-      if (!isPremium && sentToday >= 3) {
+      if (!isPremium && sentToday >= FREE_tier_LIMIT) {
           finalMessages.push({ 
               role: 'zhi' as const, 
               text: "¿Quieres contarme qué pasó o qué te hizo sentir así?" 
@@ -497,9 +513,9 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
     }
   };
 
-  const isPremiumUser = userProfileData?.isPremium;
-  const sentToday = userProfileData?.lastMessageDate === new Date().toISOString().split('T')[0] ? (userProfileData?.messagesSentToday || 0) : 0;
-  const reachedLimit = !isPremiumUser && sentToday >= 3;
+  const isPremiumUser = userProfileData?.premiumStatus === 'active' || userProfileData?.isPremium;
+  const sentToday = userProfileData?.lastMessageDate === getTodayDateString() ? (userProfileData?.messagesSentToday || 0) : 0;
+  const reachedLimit = !isPremiumUser && sentToday >= FREE_tier_LIMIT;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50">
@@ -523,7 +539,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => {
-          if (msg.isPremiumUpsell && userProfileData?.isPremium) return null;
+          if (msg.isPremiumUpsell && isPremiumUser) return null;
           return (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'zhi' && !msg.isPremiumUpsell && (
@@ -544,7 +560,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
                   {msg.text}
                 </p>
                 <div className="flex flex-col gap-3 relative z-10">
-                  <Button onClick={() => window.location.href = '/premium'} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium h-11 rounded-xl">
+                  <Button onClick={() => router.push('/premium')} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium h-11 rounded-xl">
                     Abrir acceso completo
                   </Button>
                   <Button variant="ghost" onClick={handleBack} className="w-full text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 font-medium h-11 rounded-xl">
@@ -558,7 +574,7 @@ function TextChatMode({ onBack, user, userProfileData, longTermHistory, initialM
             ) : (
               <div className={`max-w-[75%] rounded-2xl p-3 shadow-sm text-[16px] leading-relaxed whitespace-pre-line ${msg.role === 'user' ? 'bg-[#4EF2C8] text-slate-900 rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100 font-display'}`}>
                 {msg.text}
-                {msg.role === 'zhi' && userProfileData?.isPremium && !msg.isPremiumUpsell && (
+                {msg.role === 'zhi' && isPremiumUser && !msg.isPremiumUpsell && (
                   <div className="mt-2 flex justify-end">
                     <button 
                       onClick={() => speakTextWithTTS(msg.text)}
@@ -862,6 +878,21 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
     setIsProcessing(true);
     const userMsg = { role: 'user' as const, text };
     
+    const todayString = getTodayDateString();
+    const isPremium = userProfileDataRef.current?.premiumStatus === 'active' || userProfileDataRef.current?.isPremium;
+    let sentTodayCount = userProfileDataRef.current?.messagesSentToday || 0;
+    const lastDate = userProfileDataRef.current?.lastMessageDate;
+    
+    if (lastDate !== todayString) {
+        sentTodayCount = 0;
+    }
+
+    if (!isPremium && sentTodayCount >= FREE_tier_LIMIT) {
+       setZhiResponse("Has alcanzado tu límite de mensajes gratuitos por hoy. Podrás continuar mañana o si prefieres, puedes abrir acceso completo.");
+       setIsProcessing(false);
+       return;
+    }
+
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     await saveConversationProgress(newMessages);
@@ -894,11 +925,27 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
         zhiText = response?.zhiHeartResponse || "Lo siento, tuve un problema para procesar tu voz. ¿Podemos intentarlo de nuevo?";
       }
 
+      // Increment limit
+      sentTodayCount += 1;
+      if (user?.uid) {
+         updateDoc(doc(db, 'users', user.uid), {
+             messagesSentToday: sentTodayCount,
+             lastMessageDate: todayString
+         }).catch(console.error);
+      }
+      
+      if (userProfileDataRef.current) {
+          userProfileDataRef.current.messagesSentToday = sentTodayCount;
+          userProfileDataRef.current.lastMessageDate = todayString;
+      }
+
       setZhiResponse(zhiText);
       const finalMessages = [...newMessages, { role: 'zhi' as const, text: zhiText }];
       setMessages(finalMessages);
       const savedId = await saveConversationProgress(finalMessages);
-      // Removed auto-play: speak(zhiText);
+      
+      // Auto-play high-quality voice for a seamless experience
+      speakTextWithTTS(zhiText);
 
       // Eagerly generate title after first voice exchange
       if (savedId && !titleGeneratedRef.current && user?.uid) {
@@ -911,11 +958,16 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
       const fallbackMessages = [...newMessages, { role: 'zhi' as const, text: fallbackMsg }];
       setMessages(fallbackMessages);
       await saveConversationProgress(fallbackMessages);
-      // Removed auto-play: speak(fallbackMsg);
+      
+      speakTextWithTTS(fallbackMsg);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const isPremiumUser = userProfileData?.premiumStatus === 'active' || userProfileData?.isPremium;
+  const sentToday = userProfileData?.lastMessageDate === getTodayDateString() ? (userProfileData?.messagesSentToday || 0) : 0;
+  const reachedLimit = !isPremiumUser && sentToday >= FREE_tier_LIMIT;
 
   const handleBack = async () => {
     if (messages.length > 0 && activeChatId && !isSaving) {
@@ -971,8 +1023,8 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
 
             <button 
               onClick={toggleListen}
-              disabled={isProcessing}
-              className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isListening ? 'bg-[#4EF2C8]/30 scale-110' : 'bg-slate-800 hover:bg-slate-700'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''} shadow-2xl`}
+              disabled={isProcessing || reachedLimit}
+              className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isListening ? 'bg-[#4EF2C8]/30 scale-110' : 'bg-slate-800 hover:bg-slate-700'} ${isProcessing || reachedLimit ? 'opacity-50 cursor-not-allowed' : ''} shadow-2xl`}
             >
                {isListening && (
                  <div className="absolute inset-0 rounded-full bg-[#4EF2C8] animate-ping opacity-20"></div>
@@ -984,7 +1036,7 @@ function VoiceChatMode({ onBack, user, userProfileData, longTermHistory }: { onB
             
             <div className="mt-12 h-6 flex items-center justify-center">
                 <p className={`text-slate-400 font-medium transition-opacity ${isListening ? 'animate-pulse text-[#4EF2C8]' : ''}`}>
-                {isListening ? 'Escuchando... Di algo.' : isProcessing ? 'Zhi está pensando...' : 'Toca el centro para hablar'}
+                {reachedLimit ? 'Límite diario alcanzado' : isListening ? 'Escuchando... Di algo.' : isProcessing ? 'Zhi está pensando...' : 'Toca el centro para hablar'}
                 </p>
             </div>
         </div>
