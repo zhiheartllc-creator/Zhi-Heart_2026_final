@@ -59,7 +59,7 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-const FREE_tier_LIMIT = 5;
+const FREE_tier_LIMIT = 3;
 
 export default function ChatPage() {
   return (
